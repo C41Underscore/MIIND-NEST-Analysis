@@ -1,6 +1,8 @@
 import matplotlib.pyplot as plt
-import miind.miindsim as miind
 import nest
+import miind.miindsim as miind
+
+import nest_experiment
 
 # Experiment ideas:
 # - Change size of populations
@@ -9,47 +11,48 @@ import nest
 # - Different types of simulation e.g. balanced inhibitory-exictatory networks, and self-connected networks etc.
 
 POPULATION_SIZES_MAX = 1000
-
-
-def nest_experiment():
-    ex_pop = nest.Create("iaf_psc_alpha", POPULATION_SIZES_MAX, params={"I_e": 0., "tau_m": 20.})
-    in_pop = nest.Create("iaf_psc_alpha", POPULATION_SIZES_MAX, params={"I_e": 0., "tau_m": 20.})
-    background_pop = nest.Create("iaf_psc_alpha", POPULATION_SIZES_MAX, params={"I_e": 375., "tau_m": 20.})
-
-    nest.Connect(background_pop, ex_pop, {"rule": "all_to_all"}, {"weight": 1., "delay": 1.})
-    nest.Connect(background_pop, in_pop, {"rule": "all_to_all"}, {"weight": 1., "delay": 1.})
-    nest.Connect(ex_pop, in_pop, {"rule": "all_to_all"}, {"weight": 1., "delay": 1.})
-    nest.Connect(in_pop, ex_pop, {"rule": "all_to_all"}, {"weight": -1., "delay": 1.})
-
-    ex_multimeter = nest.Create("multimeter", params={"label": "Excitatory"})
-    ex_multimeter.set(record_from=["V_m"])
-    nest.Connect(ex_multimeter, ex_pop)
-
-    in_multimeter = nest.Create("multimeter", params={"label": "Inhibitory"})
-    in_multimeter.set(record_from=["V_m"])
-    nest.Connect(in_multimeter, in_pop)
-
-    nest.Simulate(1000.)
-
-    dmm = ex_multimeter.get()
-    vms = dmm["events"]["V_m"]
-    ts = dmm["events"]["times"]
-    plt.figure(1)
-    plt.title("Excitatory")
-    plt.plot(ts, vms)
-
-    dmm = in_multimeter.get()
-    vms = dmm["events"]["V_m"]
-    ts = dmm["events"]["times"]
-    plt.title("Inhibitory")
-    plt.figure(2)
-    plt.plot(ts, vms)
-
-    plt.show()
+MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZES_MAX
+NEST_SYNAPSE_TYPES = ["static_synapse_hom_w", "tsodyks2_synapse"]
+OTHER_INPUT_TYPES = ["background_population"]
+NEST_INPUT_TYPES = ["ac_generator", "dc_generator", "poisson_generator", OTHER_INPUT_TYPES]
 
 
 def main():
-    nest_experiment()
+    background_pop = nest.Create("iaf_psc_alpha", 100)
+    background_pop.set({"I_e": 400.})
+    epop = nest.Create("iaf_psc_alpha", 100)
+    ipop = nest.Create("iaf_psc_alpha", 100)
+
+    emm = nest.Create("voltmeter")
+    imm = nest.Create("voltmeter")
+
+    nest.Connect(background_pop, epop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
+    nest.Connect(background_pop, ipop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
+    nest.Connect(ipop, epop, {"rule": "all_to_all"}, syn_spec={"weight": -1., "delay": 1.})
+    nest.Connect(epop, ipop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
+
+    nest.Connect(emm, epop)
+    nest.Connect(imm, ipop)
+
+    nest.Simulate(1000.)
+
+    dmm = emm.get()
+    Vms = dmm["events"]["V_m"]
+    ts = dmm["events"]["times"]
+
+    plt.figure(1)
+    plt.title("Excitatory Population")
+    plt.plot(ts, Vms)
+
+    dmm = imm.get()
+    Vms = dmm["events"]["V_m"]
+    ts = dmm["events"]["times"]
+
+    plt.figure(2)
+    plt.title("Inhibitory Population")
+    plt.plot(ts, Vms)
+
+    plt.show()
 
 
 if __name__ == "__main__":
