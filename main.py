@@ -21,18 +21,19 @@ def main():
     background_pop = nest.Create("iaf_psc_alpha", 100)
     background_pop.set({"I_e": 400.})
     epop = nest.Create("iaf_psc_alpha", 100)
+    epop.set({"I_e": 376.})
     ipop = nest.Create("iaf_psc_alpha", 100)
 
     emm = nest.Create("voltmeter")
     imm = nest.Create("voltmeter")
 
-    nest.Connect(background_pop, epop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
-    nest.Connect(background_pop, ipop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
-    nest.Connect(ipop, epop, {"rule": "all_to_all"}, syn_spec={"weight": -1., "delay": 1.})
-    nest.Connect(epop, ipop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
+    # nest.Connect(background_pop, epop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
+    nest.Connect(epop, epop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
+    # nest.Connect(ipop, epop, {"rule": "all_to_all"}, syn_spec={"weight": -1., "delay": 1.})
+    # nest.Connect(epop, ipop, {"rule": "all_to_all"}, syn_spec={"weight": 1., "delay": 1.})
 
     nest.Connect(emm, epop)
-    nest.Connect(imm, ipop)
+    # nest.Connect(imm, ipop)
 
     nest.Simulate(1000.)
 
@@ -44,13 +45,13 @@ def main():
     plt.title("Excitatory Population")
     plt.plot(ts, Vms)
 
-    dmm = imm.get()
-    Vms = dmm["events"]["V_m"]
-    ts = dmm["events"]["times"]
-
-    plt.figure(2)
-    plt.title("Inhibitory Population")
-    plt.plot(ts, Vms)
+    # dmm = imm.get()
+    # Vms = dmm["events"]["V_m"]
+    # ts = dmm["events"]["times"]
+    #
+    # plt.figure(2)
+    # plt.title("Inhibitory Population")
+    # plt.plot(ts, Vms)
 
     plt.show()
 
