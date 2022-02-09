@@ -10,6 +10,9 @@ from time import perf_counter
 # TODO: Implement the MIIND simulation
 # TODO: Implement randomness into experiment
 
+NEST_NEURON_MODEL = "iaf_cond_alpha"
+NEST_SIMULATION_TIME = 200.
+
 DATA_LOCATION = "nest_results/"
 VOLTAGE_DATA_LOCATION = DATA_LOCATION + "multimeter/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
@@ -58,7 +61,7 @@ def compile_data():
 def kernel_settings():
     nest.set_verbosity(18)
     nest.SetKernelStatus({"overwrite_files": True})
-    nest.SetDefaults("iaf_psc_alpha", {"I_e": 0., "tau_m": 20.})
+    nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0.})
 
 
 def self_connected_network(size, connections, synapse_type, background_input):
@@ -72,8 +75,8 @@ def self_connected_network(size, connections, synapse_type, background_input):
                                                                      + str(connections) + "_" + str(synapse_type) + "_"
                                                                      + str(background_input) + "_spikes"))
 
-    pop = nest.Create("iaf_psc_alpha", size)
-    background_pop = nest.Create("iaf_psc_alpha", size)
+    pop = nest.Create(NEST_NEURON_MODEL, size)
+    background_pop = nest.Create(NEST_NEURON_MODEL, size)
     background_pop.set({"I_e": 1000.})
     exc_poisson = nest.Create("poisson_generator")
     exc_poisson.set(rate=80000.)
@@ -105,8 +108,8 @@ def balanced_ie_network(size, exc_connections, inh_connections, synapse_type, ba
                                                                          "_spikes"))
 
     # balanced I-E network
-    epop = nest.Create("iaf_psc_alpha", size)
-    ipop = nest.Create("iaf_psc_alpha", size)
+    epop = nest.Create(NEST_NEURON_MODEL, size)
+    ipop = nest.Create(NEST_NEURON_MODEL, size)
     # background_pop = nest.Create("iaf_psc_alpha", size)
     # background_pop.set({"I_e": 1000.})
     exc_poisson = nest.Create("poisson_generator")
@@ -148,7 +151,7 @@ def nest_experiment():
                         count += 1
                         kernel_settings()
                         balanced_ie_network(size, exc_connections, inh_connections, "static_synapse", input_type)
-                        nest.Simulate(1000.)
+                        nest.Simulate(NEST_SIMULATION_TIME)
                         nest.ResetKernel()
 
     for size in range(1, POPULATION_SIZES_MAX+1):
@@ -158,11 +161,11 @@ def nest_experiment():
                     count += 1
                     kernel_settings()
                     self_connected_network(size, connections, "static_synapse", input_type)
-                    nest.Simulate(1000.)
+                    nest.Simulate(NEST_SIMULATION_TIME)
                     nest.ResetKernel()
 
     total_time = round(perf_counter() - start, 2)
-    print(str(count) + " experiments performed in " + str(total_time))
+    print(str(count) + " experiments performed in " + str(total_time) + " seconds.")
     print("---NEST EXPERIMENT END---")
 
 
