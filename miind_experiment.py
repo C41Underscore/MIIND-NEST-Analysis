@@ -6,6 +6,7 @@ from shutil import rmtree
 import matplotlib.pyplot as plt
 from time import perf_counter
 from string import Template
+from joblib import Parallel, delayed
 
 
 MIIND_DATA_LOCATION = "miind_files/"
@@ -53,7 +54,10 @@ def generate_files(sim_name):
     )
 
 
-def generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, input_type):
+def generate_balanced_ie_files(size, exc_connections, inh_connections, input_type):
+    sim_dir = "balancedIE_{0}_{1}_{2}_{3}".format(size, exc_connections, inh_connections, input_type)
+    create_and_reset_sim_dir(sim_dir)
+    # generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, input_type)
     entire_file = ""
     with open("balanced_ie_template.xml", "r") as file:
         for line in file:
@@ -64,7 +68,7 @@ def generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, 
     exc_input_conn = "<Connection In=\"INPUT_E\" Out=\"E\" num_connections=\"" + str(size) + \
                      "\" efficacy=\"1.0\" delay=\"0.001\"/>"
     inh_input_conn = "<Connection In=\"INPUT_I\" Out=\"I\" num_connections=\"" + str(size) + \
-                     "\" efficacy=\"1.0\" delay=\"0.001\"/>"
+                     "\" efficacy=\"-1.0\" delay=\"0.001\"/>"
     simulation_xml = t.substitute({
         "sim_dir": sim_dir,
         "timestep": str(SIMULATION_TIME_STEP),
@@ -80,34 +84,34 @@ def generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, 
     with open(sim_dir + ".xml", "w") as file:
         file.write(simulation_xml)
     generate_files(sim_dir)
-
-    miind.init(1, sim_dir + ".xml")
-
-    timestep = miind.getTimeStep()
-    simulation_length = miind.getSimulationLength()
-    print("Timestep from XML : {}".format(timestep))
-    print("Sim time from XML: {}".format(simulation_length))
-
-    miind.startSimulation()
-    constant_input = [2500]
-    exc_activities = []
-    inh_activities = []
-    for i in range(int(simulation_length / timestep)):
-        exc_activities.append(miind.evolveSingleStep(constant_input)[0])
-        inh_activities.append(miind.evolveSingleStep(constant_input)[1])
-
-    miind.endSimulation()
-
-    plt.figure(1)
-    plt.plot(exc_activities)
-    plt.title("Excitatory Firing Rate.")
-
-    plt.figure(2)
-    plt.plot(inh_activities)
-    plt.title("Inhibitory Firing Rate.")
-
-    plt.show()
-    exit(0)
+    chdir("..")
+    #
+    # miind.init(1, sim_dir + ".xml")
+    #
+    # timestep = miind.getTimeStep()
+    # simulation_length = miind.getSimulationLength()
+    # print("Timestep from XML : {}".format(timestep))
+    # print("Sim time from XML: {}".format(simulation_length))
+    #
+    # miind.startSimulation()
+    # constant_input = []
+    # exc_activities = []
+    # inh_activities = []
+    # for i in range(int(simulation_length / timestep)):
+    #     exc_activities.append(miind.evolveSingleStep(constant_input)[0])
+    #     inh_activities.append(miind.evolveSingleStep(constant_input)[1])
+    #
+    # miind.endSimulation()
+    #
+    # plt.figure(1)
+    # plt.plot(exc_activities)
+    # plt.title("Excitatory Firing Rate.")
+    #
+    # plt.figure(2)
+    # plt.plot(inh_activities)
+    # plt.title("Inhibitory Firing Rate.")
+    #
+    # plt.show()
 
 
 def create_and_reset_sim_dir(name):
@@ -122,26 +126,26 @@ def main():
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    for size in range(1, POPULATION_SIZES_MAX+1):
-        for exc_connections in range(1, size+1):
-            for inh_connections in range(1, size+1):
-                for input_type in ["poisson"]:
-                    sim_dir = "balancedIE_{0}_{1}_{2}_{3}".format(size, exc_connections, inh_connections, input_type)
-                    create_and_reset_sim_dir(sim_dir)
-                    generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, input_type)
+    jobs = Parallel(n_jobs=4)(delayed(generate_balanced_ie_files)(size, exc_connections, inh_connections, input_type)
+                              for size in range(1, POPULATION_SIZES_MAX+1)
+                              for exc_connections in range(1, size+1)
+                              for inh_connections in range(1, size+1)
+                              for input_type in ["poisson"])
 
-    for size in range(1, POPULATION_SIZES_MAX+1):
-        for connections in range(1, size+1):
-            for input_type in ["poisson", "cortical"]:
-                sim_dir = "selfconnected_{0}_{1}_{2}".format(size, connections, input_type)
+    # for size in range(1, POPULATION_SIZES_MAX+1):
+    #     for connections in range(1, size+1):
+    #         for input_type in ["poisson", "cortical"]:
+    #             sim_dir = "selfconnected_{0}_{1}_{2}".format(size, connections, input_type)
 
-    chdir(MIIND_DATA_LOCATION)
-    for sim_dir in sim_files:
-        if isdir(sim_dir):
-            rmtree(sim_dir)
-        mkdir(sim_dir)
-        chdir(sim_dir)
+    # chdir(MIIND_DATA_LOCATION)
+    # for sim_dir in sim_files:
+    #     if isdir(sim_dir):
+    #         rmtree(sim_dir)
+    #     mkdir(sim_dir)
+    #     chdir(sim_dir)
 
+    end = perf_counter() - start
+    print("MIIND experiments created in " + str(end) + " seconds.")
     exit(0)
 
 

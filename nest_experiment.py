@@ -22,6 +22,21 @@ MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZES_MAX
 NEST_SYNAPSE_TYPES = ["static_synapse", "tsodyks2_synapse"]
 
 
+def extract_spike_recorder_details(filename):
+    spike_times = []
+    with open(SPIKE_DATA_LOCATION + filename) as file:
+        file.readline()
+        file.readline()
+        file.readline()
+        while file:
+            line = file.readline().strip("\n")
+            if line == "":
+                break
+            line = line.split("\t")
+            spike_times.append(line[1])
+    return spike_times
+
+
 def extract_multimeter_data(filename):
     times = []
     voltage = []
@@ -53,9 +68,17 @@ def compile_data():
             self_connected_multimeter_files.append(mf)
         if "selfconnected" == sf[0:13]:
             self_connected_spike_files.append(sf)
-    self_connected_multimeter_data = []
-    for file in self_connected_multimeter_files:
-        data = extract_multimeter_data(file)
+
+    for file in self_connected_spike_files:
+        data = extract_spike_recorder_details(file)
+        firing_rate = (1/NEST_SIMULATION_TIME) * len(data)
+        print("Firing Rate: " + firing_rate)
+        # CAPTURING FIRING RATE FROM NEST SIMULATIONS
+        exit(0)
+
+    # self_connected_multimeter_data = []
+    # for file in self_connected_multimeter_files:
+    #     data = extract_multimeter_data(file)
 
 
 def kernel_settings():
@@ -129,6 +152,10 @@ def balanced_ie_network(size, exc_connections, inh_connections, synapse_type, ba
         nest.Connect(exc_poisson, ipop)
         nest.Connect(inh_poisson, epop)
         nest.Connect(inh_poisson, ipop)
+    nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                 syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
+    nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                 syn_spec={"synapse_model": synapse_type, "weight": -1., "delay": 1.})
     nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
                  syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
     nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
@@ -177,7 +204,7 @@ def nest_main():
         rmtree("nest_results/spike_recorder")
     mkdir("nest_results/spike_recorder")
     nest_experiment()
-    # compile_data()
+    compile_data()
 
 
 if __name__ == "__main__":
