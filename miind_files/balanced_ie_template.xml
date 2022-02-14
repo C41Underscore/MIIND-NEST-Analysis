@@ -1,0 +1,38 @@
+<Simulation>
+     <WeightType>CustomConnectionParameters</WeightType>
+     <Algorithms>
+          <Algorithm type="GridAlgorithm" name="COND" modelfile="$sim_dir.model" tau_refractive="0.0" transformfile="${sim_dir}_0_0_0_0_.tmat" start_v="-0.070" start_w="0.0" >
+               <TimeStep>$timestep</TimeStep>
+          </Algorithm>
+		  <Algorithm type="RateAlgorithm" name="ExcitatoryInput">
+               <rate>80000.</rate>
+          </Algorithm>
+          <Algorithm type="RateAlgorithm" name="InhibitoryInput">
+               <rate>15000.</rate>
+          </Algorithm>
+     </Algorithms>
+     <Nodes>
+          $exc_input
+          $inh_input
+          <Node algorithm="COND" name="E" type="EXCITATORY_DIRECT" />
+          <Node algorithm="COND" name="I" type="INHIBITORY_DIRECT" />
+     </Nodes>
+     <Connections>
+          $exc_input_conn
+          $inh_input_conn
+          <Connection In="E" Out="I" num_connections="$exc_connections" efficacy="1.0" delay="0.001"/>
+          <Connection In="I" Out="E" num_connections="$inh_connections" efficacy="-1.0" delay="0.001"/>
+          <OutgoingConnection Node="E"/>
+          <OutgoingConnection Node="I"/>
+     </Connections>
+     <Reporting>
+          <Rate node="E" t_interval="0.001" />
+          <Rate node="I" t_interval="0.001" />
+     </Reporting>
+     <SimulationRunParameter>
+          <SimulationName>$sim_dir</SimulationName>
+          <t_end>0.2</t_end>
+          <t_step>$timestep</t_step>
+          <name_log>$sim_dir.log</name_log>
+     </SimulationRunParameter>
+</Simulation>
