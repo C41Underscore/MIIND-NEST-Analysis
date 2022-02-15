@@ -1,30 +1,47 @@
 import matplotlib.pyplot as plt
 import nest
 from os.path import isdir
-from os import mkdir, listdir
+from os import mkdir, listdir, chdir, getcwd
 from shutil import rmtree
 from time import perf_counter
+from random import uniform
 
-# TODO: Plan and implement how data is written to file
-# TODO: Work out how this simulation is going to be sped up to run large groups of neurons
-# TODO: Implement the MIIND simulation
-# TODO: Implement randomness into experiment
 
 NEST_NEURON_MODEL = "iaf_cond_alpha"
-NEST_SIMULATION_TIME = 200.
+NEST_SIMULATION_TIME = 100.
 
 DATA_LOCATION = "nest_results/"
 VOLTAGE_DATA_LOCATION = DATA_LOCATION + "multimeter/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
+ANALYSIS_TIME_STEP = 0.025
+NUMBER_OF_REPEATS = 2
 
 POPULATION_SIZES_MAX = 10
 MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZES_MAX
 NEST_SYNAPSE_TYPES = ["static_synapse", "tsodyks2_synapse"]
 
 
-def extract_spike_recorder_details(filename):
+def create_and_reset_sim_dir(name):
+    if isdir(name):
+        rmtree(name)
+    mkdir(name)
+
+
+# Rate as a Population Activity (Average over Several Neurons, Average over Several Runs)
+def average_firing_rate(t, dt, spikes, number_of_neurons):
+    average_rate = 0
+    for i in range(0, len(spikes)):
+        number_of_spikes = 0
+        for j in range(0, len(spikes[i])):
+            if t <= spikes[i][j] <= (t+dt):
+                number_of_spikes += 1
+        average_rate += (1/len(spikes))*(1/dt)*(number_of_spikes/number_of_neurons)
+    return round(average_rate, 3)
+
+
+def extract_spikes_from_recorder(filename):
     spike_times = []
-    with open(SPIKE_DATA_LOCATION + filename) as file:
+    with open(filename) as file:
         file.readline()
         file.readline()
         file.readline()
@@ -33,16 +50,13 @@ def extract_spike_recorder_details(filename):
             if line == "":
                 break
             line = line.split("\t")
-            spike_times.append(line[1])
+            spike_times.append(float(line[1]))
     return spike_times
 
 
 def extract_multimeter_data(filename):
     times = []
     voltage = []
-    sim_size = 0
-    file_parts = filename.split("_")
-    sim_size = file_parts[1]
     with open(VOLTAGE_DATA_LOCATION + filename, "r") as file:
         file.readline()
         file.readline()
@@ -58,23 +72,28 @@ def extract_multimeter_data(filename):
 
 
 def compile_data():
-    multimeter_files = listdir(VOLTAGE_DATA_LOCATION)
-    spike_files = listdir(SPIKE_DATA_LOCATION)
+    spike_files = listdir("./")
     # extract self connected data
+    balanced_ie_spike_files = []
     self_connected_multimeter_files = []
     self_connected_spike_files = []
-    for mf, sf in zip(multimeter_files, spike_files):
-        if "selfconnected" == mf[0:13]:
-            self_connected_multimeter_files.append(mf)
-        if "selfconnected" == sf[0:13]:
+    for sf in spike_files:
+        if "balancedIE" == sf[0:10]:
+            balanced_ie_spike_files.append(sf)
+        else:
             self_connected_spike_files.append(sf)
-
-    for file in self_connected_spike_files:
-        data = extract_spike_recorder_details(file)
-        firing_rate = (1/NEST_SIMULATION_TIME) * len(data)
-        print("Firing Rate: " + firing_rate)
+    for sim_dir in balanced_ie_spike_files:
+        print(sim_dir)
+        chdir(sim_dir)
+        files = listdir("./")
+        spikes = []
+        for file in files:
+            spikes.append([spike / 1000. for spike in extract_spikes_from_recorder(file)])
+        dir_parts = sim_dir.split("_")
+        sim_size = int(dir_parts[1])
+        print("\t" + str(average_firing_rate(ANALYSIS_TIME_STEP, ANALYSIS_TIME_STEP, spikes, sim_size)))
+        chdir("..")
         # CAPTURING FIRING RATE FROM NEST SIMULATIONS
-        exit(0)
 
     # self_connected_multimeter_data = []
     # for file in self_connected_multimeter_files:
@@ -85,83 +104,65 @@ def kernel_settings():
     nest.set_verbosity(18)
     nest.SetKernelStatus({"overwrite_files": True})
     nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0.})
+    nest.rng_seed = int(uniform(0., 2**32-1))
 
 
-def self_connected_network(size, connections, synapse_type, background_input):
-    multimeter = nest.Create("multimeter")
-    multimeter.set(record_to="ascii", record_from=["V_m"], label=str(VOLTAGE_DATA_LOCATION + "selfconnected_" + str(size) + "_"
-                                                                     + str(connections) + "_" + str(synapse_type) + "_"
-                                                                     + str(background_input)))
-
+def self_connected_network(size, connections, background_input, experiment_number):
     spike_recorder = nest.Create("spike_recorder")
-    spike_recorder.set(record_to="ascii", label=str(SPIKE_DATA_LOCATION + "selfconnected_" + str(size) + "_"
-                                                                     + str(connections) + "_" + str(synapse_type) + "_"
-                                                                     + str(background_input) + "_spikes"))
+    spike_recorder.set(record_to="ascii", label=str("test" + str(experiment_number)))
 
     pop = nest.Create(NEST_NEURON_MODEL, size)
-    background_pop = nest.Create(NEST_NEURON_MODEL, size)
-    background_pop.set({"I_e": 1000.})
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=80000.)
+    exc_poisson.set(rate=nest.random.normal(mean=8000., std=3.))
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=15000.)
+    inh_poisson.set(rate=nest.random.normal(mean=1500., std=3.))
 
     if background_input == "poisson":
-        nest.Connect(exc_poisson, pop)
-        nest.Connect(inh_poisson, pop)
+        nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
+        nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
     elif background_input == "cortical":
-        pop.set({"I_e": 375.})
-        # nest.Connect(background_pop, pop, {"rule": "all_to_all"},
-        #         syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
-        # nest.Connect(pop, pop, {"rule": "all_to_all"},
-        #          syn_spec={"synapse_model": synapse_type, "weight": 2., "delay": 1.})
+        pop.set({"I_e": nest.random.normal(mean=375., std=5.)})
 
-    nest.Connect(multimeter, pop)
+    nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
+                 syn_spec={"weight": nest.random.uniform(min=0., max=2.),
+                           "delay": 1.})
+
     nest.Connect(pop, spike_recorder)
 
 
-def balanced_ie_network(size, exc_connections, inh_connections, synapse_type, background_input):
-    multimeter = nest.Create("multimeter")
-    multimeter.set(record_to="ascii", record_from=["V_m"], label=str(VOLTAGE_DATA_LOCATION + "balancedIE_" + str(size) + "_" +
-            str(exc_connections) + "_" + str(inh_connections) + "_" + str(synapse_type) + "_" + str(background_input)))
-
+def balanced_ie_network(size, exc_connections, inh_connections, background_input, experiment_number):
     spike_recorder = nest.Create("spike_recorder")
-    spike_recorder.set(record_to="ascii", label=str(SPIKE_DATA_LOCATION + "balancedIE_" + str(size) + "_"
-          + str(exc_connections) + "_" + str(inh_connections) + "_" + str(synapse_type) + "_" + str(background_input) +
-                                                                         "_spikes"))
+    spike_recorder.set(record_to="ascii", label=str("test" + str(experiment_number)))
 
     # balanced I-E network
     epop = nest.Create(NEST_NEURON_MODEL, size)
     ipop = nest.Create(NEST_NEURON_MODEL, size)
-    # background_pop = nest.Create("iaf_psc_alpha", size)
-    # background_pop.set({"I_e": 1000.})
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=80000.)
+    exc_poisson.set(rate=nest.random.normal(mean=8000., std=3.))
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=15000.)
+    inh_poisson.set(rate=nest.random.normal(mean=1500., std=3.))
 
     if background_input == "cortical":
-        epop.set({"I_e": 375.})
-        ipop.set({"I_e": 375.})
-        # nest.Connect(background_pop, epop, {"rule": "all_to_all"},
-        #              syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
-        # nest.Connect(background_pop, ipop, {"rule": "all_to_all"},
-        #              syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
+        epop.set({"I_e": nest.random.normal(mean=375., std=5.)})
+        ipop.set({"I_e": nest.random.normal(mean=375., std=5.)})
     elif background_input == "poisson":
-        nest.Connect(exc_poisson, epop)
-        nest.Connect(exc_poisson, ipop)
-        nest.Connect(inh_poisson, epop)
-        nest.Connect(inh_poisson, ipop)
+        nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
+        nest.Connect(exc_poisson, ipop, syn_spec={"weight": -1.})
+        nest.Connect(inh_poisson, epop, syn_spec={"weight": 1.})
+        nest.Connect(inh_poisson, ipop, syn_spec={"weight": -1.})
     nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                 syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
-    nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                 syn_spec={"synapse_model": synapse_type, "weight": -1., "delay": 1.})
+                 syn_spec={"weight": nest.random.uniform(min=0., max=2.),
+                           "delay": 1.})
+    nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                 syn_spec={"weight": nest.random.uniform(min=-2., max=0.),
+                           "delay": 1.})
     nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                 syn_spec={"synapse_model": synapse_type, "weight": 1., "delay": 1.})
+                 syn_spec={"weight": nest.random.uniform(min=0., max=2.),
+                           "delay": 1.})
     nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                 syn_spec={"synapse_model": synapse_type, "weight": -1., "delay": 1.})
+                 syn_spec={"weight": nest.random.uniform(min=-2., max=0.),
+                           "delay": 1.})
 
-    nest.Connect(multimeter, epop)
     nest.Connect(epop, spike_recorder)
 
 
@@ -173,23 +174,32 @@ def nest_experiment():
     for size in range(1, POPULATION_SIZES_MAX+1):
         for exc_connections in range(1, size+1):
             for inh_connections in range(1, size+1):
-                # for synapse_type in NEST_SYNAPSE_TYPES:
-                    for input_type in ["poisson", "cortical"]:
+                for input_type in ["poisson", "cortical"]:
+                    sim_name = "balancedIE_" + str(size) + "_" + str(exc_connections) + "_" + \
+                               str(inh_connections) + "_" + str(input_type)
+                    create_and_reset_sim_dir(sim_name)
+                    chdir(sim_name)
+                    for i in range(1, NUMBER_OF_REPEATS+1):
                         count += 1
                         kernel_settings()
-                        balanced_ie_network(size, exc_connections, inh_connections, "static_synapse", input_type)
+                        balanced_ie_network(size, exc_connections, inh_connections, input_type, i)
                         nest.Simulate(NEST_SIMULATION_TIME)
                         nest.ResetKernel()
+                    chdir("..")
 
     for size in range(1, POPULATION_SIZES_MAX+1):
         for connections in range(1, size+1):
-            # for synapse_type in NEST_SYNAPSE_TYPES:
-                for input_type in ["poisson", "cortical"]:
+            for input_type in ["poisson", "cortical"]:
+                sim_name = "selfconnected_" + str(size) + "_" + str(connections) + "_" + str(input_type)
+                create_and_reset_sim_dir(sim_name)
+                chdir(sim_name)
+                for i in range(0, NUMBER_OF_REPEATS):
                     count += 1
                     kernel_settings()
-                    self_connected_network(size, connections, "static_synapse", input_type)
+                    self_connected_network(size, connections, input_type, i)
                     nest.Simulate(NEST_SIMULATION_TIME)
                     nest.ResetKernel()
+                chdir("..")
 
     total_time = round(perf_counter() - start, 2)
     print(str(count) + " experiments performed in " + str(total_time) + " seconds.")
@@ -197,12 +207,13 @@ def nest_experiment():
 
 
 def nest_main():
-    if isdir("nest_results/multimeter"):
-        rmtree("nest_results/multimeter")
-    mkdir("nest_results/multimeter")
-    if isdir("nest_results/spike_recorder"):
-        rmtree("nest_results/spike_recorder")
-    mkdir("nest_results/spike_recorder")
+    # if isdir("nest_results/multimeter"):
+    #     rmtree("nest_results/multimeter")
+    # mkdir("nest_results/multimeter")
+    if isdir("nest_results"):
+        rmtree("nest_results")
+    mkdir("nest_results")
+    chdir("nest_results")
     nest_experiment()
     compile_data()
 
