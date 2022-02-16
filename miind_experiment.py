@@ -1,6 +1,6 @@
 import miind.miindsim as miind
 from miind.grid_generate import generate
-from os import chdir, mkdir
+from os import chdir, mkdir, listdir
 from os.path import isdir
 from shutil import rmtree
 import matplotlib.pyplot as plt
@@ -11,12 +11,15 @@ from joblib import Parallel, delayed
 
 MIIND_DATA_LOCATION = "miind_files/"
 BALANCED_IE_TEMPLATE = "balancedIE_template.xml"
+GENERATE_FILES = True
 
-POPULATION_SIZES_MAX = 10
+POPULATION_SIZES_MAX = 1
 
 SIMULATION_TIME_STEP = 1e-03
 SIMULATION_THRESHOLD = -55.0e-3
 SIMULATION_RESET_V = -70.0e-3
+
+RESULTS = []
 
 
 # pre-defined MIIND conductance-based LIF neuron equation
@@ -54,54 +57,69 @@ def generate_files(sim_name):
     )
 
 
-def generate_balanced_ie_files(size, exc_connections, inh_connections, input_type):
-    sim_dir = "balancedIE_{0}_{1}_{2}_{3}".format(size, exc_connections, inh_connections, input_type)
-    create_and_reset_sim_dir(sim_dir)
-    # generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, input_type)
-    entire_file = ""
-    with open("balanced_ie_template.xml", "r") as file:
-        for line in file:
-            entire_file += line
-    t = Template(entire_file)
-    poisson_exc_input = "<Node algorithm=\"ExcitatoryInput\" name=\"INPUT_E\" type=\"EXCITATORY_DIRECT\" />"
-    poisson_inh_input = "<Node algorithm=\"InhibitoryInput\" name=\"INPUT_I\" type=\"INHIBITORY_DIRECT\" />"
-    exc_input_conn = "<Connection In=\"INPUT_E\" Out=\"E\" num_connections=\"" + str(size) + \
-                     "\" efficacy=\"1.0\" delay=\"0.001\"/>"
-    inh_input_conn = "<Connection In=\"INPUT_I\" Out=\"I\" num_connections=\"" + str(size) + \
-                     "\" efficacy=\"-1.0\" delay=\"0.001\"/>"
-    simulation_xml = t.substitute({
-        "sim_dir": sim_dir,
-        "timestep": str(SIMULATION_TIME_STEP),
-        "size": size,
-        "exc_connections": exc_connections,
-        "inh_connections": inh_connections,
-        "exc_input": poisson_exc_input if input_type == "poisson" else "",
-        "inh_input": poisson_inh_input if input_type == "poisson" else "",
-        "exc_input_conn": exc_input_conn if input_type == "poisson" else "",
-        "inh_input_conn": inh_input_conn if input_type == "poisson" else ""
-    })
-    chdir(sim_dir)
-    with open(sim_dir + ".xml", "w") as file:
-        file.write(simulation_xml)
-    generate_files(sim_dir)
-    chdir("..")
-    #
-    # miind.init(1, sim_dir + ".xml")
-    #
-    # timestep = miind.getTimeStep()
-    # simulation_length = miind.getSimulationLength()
+def run_experiment(sim_file):
+    miind.init(1, sim_file + ".xml")
+
+    timestep = miind.getTimeStep()
+    simulation_length = miind.getSimulationLength()
     # print("Timestep from XML : {}".format(timestep))
     # print("Sim time from XML: {}".format(simulation_length))
-    #
-    # miind.startSimulation()
-    # constant_input = []
-    # exc_activities = []
-    # inh_activities = []
-    # for i in range(int(simulation_length / timestep)):
-    #     exc_activities.append(miind.evolveSingleStep(constant_input)[0])
-    #     inh_activities.append(miind.evolveSingleStep(constant_input)[1])
-    #
-    # miind.endSimulation()
+
+    miind.startSimulation()
+    constant_input = []
+    exc_activities = []
+    inh_activities = []
+    for i in range(int(simulation_length / timestep)):
+        exc_activities.append(miind.evolveSingleStep(constant_input)[0])
+        inh_activities.append(miind.evolveSingleStep(constant_input)[1])
+
+    miind.endSimulation()
+
+    return sim_file, (exc_activities, inh_activities)
+
+
+def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, input_type):
+    sim_dir = "balancedIE_{0}_{1}_{2}_{3}".format(size, exc_connections, inh_connections, input_type)
+    if GENERATE_FILES:
+        create_and_reset_sim_dir(sim_dir)
+        # generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, input_type)
+        entire_file = ""
+        with open("balanced_ie_template.xml", "r") as file:
+            for line in file:
+                entire_file += line
+        t = Template(entire_file)
+        poisson_exc_input = "<Node algorithm=\"ExcitatoryInput\" name=\"INPUT_E\" type=\"EXCITATORY_DIRECT\" />"
+        poisson_inh_input = "<Node algorithm=\"InhibitoryInput\" name=\"INPUT_I\" type=\"INHIBITORY_DIRECT\" />"
+        exc_input_conn = "<Connection In=\"INPUT_E\" Out=\"E\" num_connections=\"" + str(size) + \
+                         "\" efficacy=\"1.0\" delay=\"0.001\"/>\n\t\t  <Connection In=\"INPUT_E\" Out=\"I\" " \
+                         "num_connections=\"" + str(size) + \
+                         "\" efficacy=\"1.0\" delay=\"0.001\"/>"
+        inh_input_conn = "<Connection In=\"INPUT_I\" Out=\"I\" num_connections=\"" + str(size) + \
+                         "\" efficacy=\"-1.0\" delay=\"0.001\"/>\n\t\t  <Connection In=\"INPUT_I\" Out=\"E\" " \
+                         "num_connections=\"" + str(size) + \
+                         "\" efficacy=\"-1.0\" delay=\"0.001\"/>"
+        simulation_xml = t.substitute({
+            "sim_dir": sim_dir,
+            "timestep": str(SIMULATION_TIME_STEP),
+            "size": size,
+            "exc_connections": exc_connections,
+            "inh_connections": inh_connections,
+            "exc_input": poisson_exc_input if input_type == "poisson" else "",
+            "inh_input": poisson_inh_input if input_type == "poisson" else "",
+            "exc_input_conn": exc_input_conn if input_type == "poisson" else "",
+            "inh_input_conn": inh_input_conn if input_type == "poisson" else ""
+        })
+        chdir(sim_dir)
+        with open(sim_dir + ".xml", "w") as file:
+            file.write(simulation_xml)
+        generate_files(sim_dir)
+    else:
+        chdir(sim_dir)
+
+    experiment_results = run_experiment(sim_dir)
+
+    # print(experiment_results)
+    chdir("..")
     #
     # plt.figure(1)
     # plt.plot(exc_activities)
@@ -120,13 +138,15 @@ def create_and_reset_sim_dir(name):
     mkdir(name)
 
 
+# Rate 2 is Excitatory, Rate 3 is Inhibitory
 def main():
     chdir(MIIND_DATA_LOCATION)
     sim_files = []
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    jobs = Parallel(n_jobs=4)(delayed(generate_balanced_ie_files)(size, exc_connections, inh_connections, input_type)
+    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_balanced_ie)(size, exc_connections, inh_connections,
+                                                                        input_type)
                               for size in range(1, POPULATION_SIZES_MAX+1)
                               for exc_connections in range(1, size+1)
                               for inh_connections in range(1, size+1)
@@ -145,8 +165,8 @@ def main():
     #     chdir(sim_dir)
 
     end = perf_counter() - start
-    print("MIIND experiments created in " + str(end) + " seconds.")
-    exit(0)
+    number_of_experiments = len(listdir("./")) - 2
+    print(str(number_of_experiments) + " MIIND experiments performed in " + str(end) + " seconds.")
 
 
 if __name__ == "__main__":

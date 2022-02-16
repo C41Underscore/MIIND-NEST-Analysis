@@ -8,12 +8,12 @@ from random import uniform
 
 
 NEST_NEURON_MODEL = "iaf_cond_alpha"
-NEST_SIMULATION_TIME = 100.
+NEST_SIMULATION_TIME = 200.
 
 DATA_LOCATION = "nest_results/"
 VOLTAGE_DATA_LOCATION = DATA_LOCATION + "multimeter/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
-ANALYSIS_TIME_STEP = 0.025
+ANALYSIS_TIME_STEP = 0.01
 NUMBER_OF_REPEATS = 2
 
 POPULATION_SIZES_MAX = 10
@@ -91,7 +91,15 @@ def compile_data():
             spikes.append([spike / 1000. for spike in extract_spikes_from_recorder(file)])
         dir_parts = sim_dir.split("_")
         sim_size = int(dir_parts[1])
-        print("\t" + str(average_firing_rate(ANALYSIS_TIME_STEP, ANALYSIS_TIME_STEP, spikes, sim_size)))
+        firing_rates = []
+        t = 0.
+        while t < NEST_SIMULATION_TIME/1000.:
+            firing_rates.append(average_firing_rate(t, ANALYSIS_TIME_STEP, spikes, sim_size))
+            t += ANALYSIS_TIME_STEP
+        with open("firing_rate.dat", "w") as file:
+            data = str(firing_rates)
+            data = data[1:len(data)-2]
+            file.write(data)
         chdir("..")
         # CAPTURING FIRING RATE FROM NEST SIMULATIONS
 
@@ -113,9 +121,9 @@ def self_connected_network(size, connections, background_input, experiment_numbe
 
     pop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=nest.random.normal(mean=8000., std=3.))
+    exc_poisson.set(rate=nest.random.normal(mean=80000., std=1.))
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=nest.random.normal(mean=1500., std=3.))
+    inh_poisson.set(rate=nest.random.normal(mean=15000., std=1.))
 
     if background_input == "poisson":
         nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
@@ -138,9 +146,9 @@ def balanced_ie_network(size, exc_connections, inh_connections, background_input
     epop = nest.Create(NEST_NEURON_MODEL, size)
     ipop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=nest.random.normal(mean=8000., std=3.))
+    exc_poisson.set(rate=nest.random.normal(mean=80000., std=1.))
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=nest.random.normal(mean=1500., std=3.))
+    inh_poisson.set(rate=nest.random.normal(mean=15000., std=1.))
 
     if background_input == "cortical":
         epop.set({"I_e": nest.random.normal(mean=375., std=5.)})
