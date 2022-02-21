@@ -3,18 +3,22 @@ from miind.grid_generate import generate
 from os import chdir, mkdir, listdir
 from os.path import isdir
 from shutil import rmtree
-import matplotlib.pyplot as plt
 from time import perf_counter
 from string import Template
 from joblib import Parallel, delayed
+from numpy.random import uniform
+from statistics import mean
 
 
 MIIND_DATA_LOCATION = "miind_files/"
 BALANCED_IE_TEMPLATE = "balancedIE_template.xml"
-GENERATE_FILES = True
+GENERATE_FILES = False
+PERFORM_EXPERIMENTS = True
+ANALYSIS_TIME_STEP = 0.01
 
 POPULATION_SIZES_MAX = 1
 
+SIMULATION_TIME = 0.2
 SIMULATION_TIME_STEP = 1e-03
 SIMULATION_THRESHOLD = -55.0e-3
 SIMULATION_RESET_V = -70.0e-3
@@ -57,29 +61,74 @@ def generate_files(sim_name):
     )
 
 
+def compress_rates(firing_rates):
+    rates_per_step = int(ANALYSIS_TIME_STEP/SIMULATION_TIME_STEP)
+    new_rates = []
+    for i in range(0, len(firing_rates), rates_per_step):
+        new_rates.append(mean(firing_rates[i:i+rates_per_step]))
+    return new_rates
+
+
 def run_experiment(sim_file):
     miind.init(1, sim_file + ".xml")
 
-    timestep = miind.getTimeStep()
+    time_step = miind.getTimeStep()
     simulation_length = miind.getSimulationLength()
-    # print("Timestep from XML : {}".format(timestep))
-    # print("Sim time from XML: {}".format(simulation_length))
 
+    activities = []
     miind.startSimulation()
-    constant_input = []
-    exc_activities = []
-    inh_activities = []
-    for i in range(int(simulation_length / timestep)):
-        exc_activities.append(miind.evolveSingleStep(constant_input)[0])
-        inh_activities.append(miind.evolveSingleStep(constant_input)[1])
+    for i in range(int(simulation_length / time_step)):
+        activities.append(miind.evolveSingleStep([]))
 
     miind.endSimulation()
 
-    return sim_file, (exc_activities, inh_activities)
+    return activities
 
 
-def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, input_type):
-    sim_dir = "balancedIE_{0}_{1}_{2}_{3}".format(size, exc_connections, inh_connections, input_type)
+def generate_and_perform_self_connected(connections, input_type, trial_number):
+    sim_dir = "selfconnected_{0}_{1}".format(connections, input_type)
+    if GENERATE_FILES:
+        create_and_reset_sim_dir(sim_dir)
+        entire_file = ""
+        with open("selfconnected_template.xml", "r") as file:
+            for line in file:
+                entire_file += line
+        t = Template(entire_file)
+        poisson_exc_input = "<Node algorithm=\"ExcitatoryInput\" name=\"INPUT_E\" type=\"EXCITATORY_DIRECT\" />"
+        poisson_inh_input = "<Node algorithm=\"InhibitoryInput\" name=\"INPUT_I\" type=\"INHIBITORY_DIRECT\" />"
+        exc_input_conn = "<Connection In=\"INPUT_E\" Out=\"E\" num_connections=\"" + str(POPULATION_SIZES_MAX) + \
+                         "\" efficacy=\"1.0\" delay=\"0.001\"/>"
+        inh_input_conn = "<Connection In=\"INPUT_I\" Out=\"E\" num_connections=\"" + str(POPULATION_SIZES_MAX) + \
+                         "\" efficacy=\"-1.0\" delay=\"0.001\"/>"
+        simulation_xml = t.substitute({
+            "sim_dir": sim_dir,
+            "simulation_time": SIMULATION_TIME,
+            "timestep": str(SIMULATION_TIME_STEP),
+            "size": POPULATION_SIZES_MAX,
+            "connections": connections,
+            "exc_input": poisson_exc_input if input_type == "poisson" else "",
+            "inh_input": poisson_inh_input if input_type == "poisson" else "",
+            "exc_input_conn": exc_input_conn if input_type == "poisson" else "",
+            "inh_input_conn": inh_input_conn if input_type == "poisson" else ""
+        })
+        chdir(sim_dir)
+        with open(sim_dir + ".xml", "w") as file:
+            file.write(simulation_xml)
+        generate_files(sim_dir)
+    else:
+        chdir(sim_dir)
+
+    results = None
+    if PERFORM_EXPERIMENTS:
+        results = run_experiment(sim_dir)
+
+    print(results)
+
+    chdir("..")
+
+
+def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, input_type, trial_number):
+    sim_dir = "balancedIE_{0}_{1}_{2}".format(exc_connections, inh_connections, input_type)
     if GENERATE_FILES:
         create_and_reset_sim_dir(sim_dir)
         # generate_balanced_ie_files(sim_dir, size, exc_connections, inh_connections, input_type)
@@ -91,15 +140,18 @@ def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, inp
         poisson_exc_input = "<Node algorithm=\"ExcitatoryInput\" name=\"INPUT_E\" type=\"EXCITATORY_DIRECT\" />"
         poisson_inh_input = "<Node algorithm=\"InhibitoryInput\" name=\"INPUT_I\" type=\"INHIBITORY_DIRECT\" />"
         exc_input_conn = "<Connection In=\"INPUT_E\" Out=\"E\" num_connections=\"" + str(size) + \
-                         "\" efficacy=\"1.0\" delay=\"0.001\"/>\n\t\t  <Connection In=\"INPUT_E\" Out=\"I\" " \
+                         "\" efficacy=\"" + str(uniform(0., 2., None)) + "\" delay=\"0.001\"/>\n\t\t  " \
+                                                                         "<Connection In=\"INPUT_E\" Out=\"I\" " \
                          "num_connections=\"" + str(size) + \
-                         "\" efficacy=\"1.0\" delay=\"0.001\"/>"
+                         "\" efficacy=\"" + str(uniform(0., 2., None)) + "\" delay=\"0.001\"/>"
         inh_input_conn = "<Connection In=\"INPUT_I\" Out=\"I\" num_connections=\"" + str(size) + \
-                         "\" efficacy=\"-1.0\" delay=\"0.001\"/>\n\t\t  <Connection In=\"INPUT_I\" Out=\"E\" " \
+                         "\" efficacy=\"" + str(-uniform(0., 2., None)) + "\" delay=\"0.001\"/>\n\t\t  " \
+                                                                           "<Connection In=\"INPUT_I\" Out=\"E\" " \
                          "num_connections=\"" + str(size) + \
-                         "\" efficacy=\"-1.0\" delay=\"0.001\"/>"
+                         "\" efficacy=\"" + str(-uniform(0., 2., None)) + "\" delay=\"0.001\"/>"
         simulation_xml = t.substitute({
             "sim_dir": sim_dir,
+            "simulation_time": SIMULATION_TIME,
             "timestep": str(SIMULATION_TIME_STEP),
             "size": size,
             "exc_connections": exc_connections,
@@ -116,9 +168,22 @@ def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, inp
     else:
         chdir(sim_dir)
 
-    experiment_results = run_experiment(sim_dir)
+    results = None
+    if PERFORM_EXPERIMENTS:
+        results = run_experiment(sim_dir)
 
-    # print(experiment_results)
+    exc_spikes = str(compress_rates([rate[0] for rate in results]))
+    exc_spikes = exc_spikes[1:len(exc_spikes) - 1]
+    file = open("exc_test" + str(trial_number) + ".dat", "w")
+    file.write(exc_spikes)
+    file.close()
+
+    inh_spikes = str(compress_rates([rate[1] for rate in results]))
+    inh_spikes = inh_spikes[1:len(inh_spikes) - 1]
+    file = open("inh_test" + str(trial_number) + ".dat", "w")
+    file.write(inh_spikes)
+    file.close()
+
     chdir("..")
     #
     # plt.figure(1)
@@ -145,13 +210,14 @@ def main():
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_balanced_ie)(size, exc_connections, inh_connections,
-                                                                        input_type)
-                              for size in range(1, POPULATION_SIZES_MAX+1)
-                              for exc_connections in range(1, size+1)
-                              for inh_connections in range(1, size+1)
+    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_balanced_ie)(POPULATION_SIZES_MAX, exc_connections,
+                                                                        inh_connections, input_type, 1)
+                              for exc_connections in range(1, POPULATION_SIZES_MAX+1)
+                              for inh_connections in range(1, POPULATION_SIZES_MAX+1)
                               for input_type in ["poisson"])
-
+    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_self_connected)(connections, input_type, 1)
+                              for connections in range(1, POPULATION_SIZES_MAX+1)
+                              for input_type in ["poisson"])
     # for size in range(1, POPULATION_SIZES_MAX+1):
     #     for connections in range(1, size+1):
     #         for input_type in ["poisson", "cortical"]:
@@ -165,8 +231,12 @@ def main():
     #     chdir(sim_dir)
 
     end = perf_counter() - start
-    number_of_experiments = len(listdir("./")) - 2
+    number_of_experiments = len(listdir("./")) - 4
     print(str(number_of_experiments) + " MIIND experiments performed in " + str(end) + " seconds.")
+
+
+def run_miind_experiment():
+    main()
 
 
 if __name__ == "__main__":

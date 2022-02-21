@@ -6,17 +6,9 @@ from random import randint
 
 import nest_experiment
 
-# Experiment ideas:
-# - Change size of populations
-# - Change connections within population e.g. synapse types, number etc.
-# - Change inputs to these populations e.g. poisson inputs, background input etc.
-# - Different types of simulation e.g. balanced inhibitory-exictatory networks, and self-connected networks etc.
-
-# TODO: Plan and implement how data is written to file
-# TODO: Work out how this simulation is going to be sped up to run large groups of neurons
-# TODO: Implement the MIIND simulation
-# TODO: Implement randomness into experiment
-# TODO: Add inhibitory spike recorder for nest
+# TODO: Work out/ Finalise where randomness will be in our experiment
+# TODO: Run the equation ourselves to get an idea of what raw results would look like
+# TODO: Inhibitory populations in NEST not spiking - FIX!
 
 
 def p(t, dt, spikes, number_of_neurons):
