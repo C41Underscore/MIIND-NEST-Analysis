@@ -5,10 +5,10 @@
                <TimeStep>$timestep</TimeStep>
           </Algorithm>
 		  <Algorithm type="RateAlgorithm" name="ExcitatoryInput">
-               <rate>8000.</rate>
+               <rate>80000.</rate>
           </Algorithm>
           <Algorithm type="RateAlgorithm" name="InhibitoryInput">
-               <rate>1500.</rate>
+               <rate>15000.</rate>
           </Algorithm>
      </Algorithms>
      <Nodes>
@@ -20,10 +20,10 @@
      <Connections>
           $exc_input_conn
           $inh_input_conn
-          <Connection In="E" Out="E" num_connections="$exc_connections" efficacy="1.0" delay="0.001"/>
-          <Connection In="I" Out="I" num_connections="$inh_connections" efficacy="-1.0" delay="0.001"/>
-          <Connection In="E" Out="I" num_connections="$exc_connections" efficacy="1.0" delay="0.001"/>
-          <Connection In="I" Out="E" num_connections="$inh_connections" efficacy="-1.0" delay="0.001"/>
+          <Connection In="E" Out="E" num_connections="$exc_connections" efficacy="$randomEE" delay="0.001"/>
+          <Connection In="I" Out="I" num_connections="$inh_connections" efficacy="$randomII" delay="0.001"/>
+          <Connection In="E" Out="I" num_connections="$exc_connections" efficacy="$randomEI" delay="0.001"/>
+          <Connection In="I" Out="E" num_connections="$inh_connections" efficacy="$randomIE" delay="0.001"/>
           <OutgoingConnection Node="E"/>
           <OutgoingConnection Node="I"/>
      </Connections>

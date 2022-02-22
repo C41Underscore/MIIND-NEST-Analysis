@@ -7,8 +7,9 @@ from random import randint
 import nest_experiment
 
 # TODO: Work out/ Finalise where randomness will be in our experiment
-# TODO: Run the equation ourselves to get an idea of what raw results would look like
-# TODO: Inhibitory populations in NEST not spiking - FIX!
+# TODO: Simulation of cortical background activity in MIIND
+# TODO: Run experiments with small samples, examine the data to see if the experiments are producing reasonable results
+# TODO: Enable multiple experiment runs with MIIND (Don't forget the files need regenerating)
 
 
 def p(t, dt, spikes, number_of_neurons):

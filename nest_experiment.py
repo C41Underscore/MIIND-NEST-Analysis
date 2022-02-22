@@ -17,7 +17,7 @@ ANALYSIS_TIME_STEP = 0.01
 NUMBER_OF_REPEATS = 5
 
 POPULATION_SIZE_MIN = 5
-POPULATION_SIZE_MAX = 5
+POPULATION_SIZE_MAX = 10
 MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZE_MAX
 NEST_SYNAPSE_TYPES = ["static_synapse", "tsodyks2_synapse"]
 
@@ -137,9 +137,9 @@ def self_connected_network(size, connections, background_input, experiment_numbe
     spike_recorder.set(record_to="ascii", label=str("test" + str(experiment_number)))
     pop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=8000.)
+    exc_poisson.set(rate=80000.)
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=1500.)
+    inh_poisson.set(rate=15000.)
 
     if background_input == "poisson":
         nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
@@ -168,17 +168,17 @@ def balanced_ie_network(size, exc_connections, inh_connections, background_input
     epop = nest.Create(NEST_NEURON_MODEL, size)
     ipop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=8000.)
+    exc_poisson.set(rate=80000.)
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=1500.)
+    inh_poisson.set(rate=15000.)
 
     if background_input == "cortical":
         epop.set({"I_e": 376.})
         ipop.set({"I_e": 376.})
     elif background_input == "poisson":
         nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
-        nest.Connect(exc_poisson, ipop, syn_spec={"weight": -1.})
-        nest.Connect(inh_poisson, epop, syn_spec={"weight": 1.})
+        nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
+        nest.Connect(inh_poisson, epop, syn_spec={"weight": -1.})
         nest.Connect(inh_poisson, ipop, syn_spec={"weight": -1.})
     nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
                  syn_spec={"weight": nest.random.uniform(min=0., max=2.),

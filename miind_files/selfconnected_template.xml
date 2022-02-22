@@ -5,10 +5,10 @@
                <TimeStep>$timestep</TimeStep>
           </Algorithm>
 		  <Algorithm type="RateAlgorithm" name="ExcitatoryInput">
-               <rate>8000.</rate>
+               <rate>80000.</rate>
           </Algorithm>
           <Algorithm type="RateAlgorithm" name="InhibitoryInput">
-               <rate>1500.</rate>
+               <rate>15000.</rate>
           </Algorithm>
      </Algorithms>
      <Nodes>
