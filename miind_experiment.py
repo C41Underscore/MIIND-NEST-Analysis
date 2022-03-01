@@ -1,6 +1,6 @@
 import miind.miindsim as miind
 from miind.grid_generate import generate
-from os import chdir, mkdir, listdir
+from os import chdir, mkdir, listdir, getcwd
 from os.path import isdir
 from shutil import rmtree
 from time import perf_counter
@@ -18,7 +18,7 @@ ANALYSIS_TIME_STEP = 0.01
 
 POPULATION_SIZES_MAX = 1
 
-NUMBER_OF_REPEATS = 2
+NUMBER_OF_REPEATS = 1
 SIMULATION_TIME = 0.2
 SIMULATION_TIME_STEP = 1e-03
 SIMULATION_THRESHOLD = -55.0e-3
@@ -29,7 +29,7 @@ RESULTS = []
 
 # pre-defined MIIND conductance-based LIF neuron equation
 def cond(y, t):
-    E_r = -65e-3
+    E_r = -70e-3
     tau_m = 20e-3
     tau_s = 5e-3
 
@@ -40,6 +40,21 @@ def cond(y, t):
     h_prime = -h / tau_s
 
     return [v_prime, h_prime]
+
+# def cond(y, t):
+#     E_r = -70e-3
+#     r = 0.15
+#     c = 0.92
+#     tau = r*c
+#     # tau_s = 5e-3
+#
+#     v = y[0]
+#     # h = y[1]
+#
+#     v_prime = (-(1/r)*(v - E_r))/tau
+#     # h_prime = -h / tau_s
+#
+#     return [v_prime]
 
 
 def generate_files(sim_name):
@@ -55,7 +70,7 @@ def generate_files(sim_name):
         grid_v_min=-72.0e-3,
         grid_v_max=-54.0e-3,
         grid_h_min=-1.0,
-        grid_h_max=2.0,
+        grid_h_max=1.0,
         grid_v_res=200,
         grid_h_res=200,
         efficacy_orientation='h'
@@ -133,6 +148,7 @@ def generate_and_perform_self_connected(connections, input_type, trial_number):
 
 
 def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, input_type, trial_number):
+    print(getcwd())
     sim_dir = "balancedIE_{0}_{1}_{2}".format(exc_connections, inh_connections, input_type)
     if GENERATE_FILES:
         create_and_reset_sim_dir(sim_dir)
@@ -221,10 +237,10 @@ def main():
                               for inh_connections in range(1, POPULATION_SIZES_MAX+1)
                               for input_type in ["poisson"]
                               for i in range(1, NUMBER_OF_REPEATS+1))
-    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_self_connected)(connections, input_type, i)
-                              for connections in range(1, POPULATION_SIZES_MAX+1)
-                              for input_type in ["poisson"]
-                              for i in range(1, NUMBER_OF_REPEATS+1))
+    # jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_self_connected)(connections, input_type, i)
+    #                           for connections in range(1, POPULATION_SIZES_MAX+1)
+    #                           for input_type in ["poisson"]
+    #                           for i in range(1, NUMBER_OF_REPEATS+1))
     # for size in range(1, POPULATION_SIZES_MAX+1):
     #     for connections in range(1, size+1):
     #         for input_type in ["poisson", "cortical"]:

@@ -28,9 +28,7 @@ def conductance_lif(start, end, dt, e_r, e_t, tau, tau_e):
     ge = [0. for _ in range(0, steps)]
     t = [0. for _ in range(0, steps)]
     spike_train = generate_spike_train(250, dt, steps)
-    # print(spike_train)
     cur = [0.01 if spike_train[i] == 1 else 0. for i in range(0, steps)]
-    # cur = [0.376 for _ in range(0, steps)]
     for i in range(0, steps-1):
         v[i+1] = v[i] + dt*((-(v[i] - e_r) - (ge[i]*v[i]))/tau)
         if v[i+1] >= e_t:

@@ -10,6 +10,8 @@ import nest_experiment
 # TODO: Simulation of cortical background activity in MIIND
 # TODO: Run experiments with small samples, examine the data to see if the experiments are producing reasonable results
 # TODO: Enable multiple experiment runs with MIIND (Don't forget the files need regenerating)
+# TODO: Increase the number of parameters that the experiment will run
+# TODO: Construct appropriate functions for analysis
 
 
 def p(t, dt, spikes, number_of_neurons):
