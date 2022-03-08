@@ -13,10 +13,12 @@ from statistics import mean
 MIIND_DATA_LOCATION = "miind_files/"
 BALANCED_IE_TEMPLATE = "balancedIE_template.xml"
 GENERATE_FILES = True
-PERFORM_EXPERIMENTS = True
+PERFORM_EXPERIMENTS = False
 ANALYSIS_TIME_STEP = 0.01
 
-POPULATION_SIZES_MAX = 2
+POPULATION_SIZES_MAX = 1
+
+I = float(0)
 
 NUMBER_OF_REPEATS = 2
 SIMULATION_TIME = 0.2
@@ -37,7 +39,7 @@ def cond(y, t):
     h = y[1]
 
     v_prime = (-(v - E_r) - (h * v)) / tau_m
-    h_prime = -h / tau_s
+    h_prime = (-h / tau_s) + 65.
 
     return [v_prime, h_prime]
 
@@ -151,6 +153,7 @@ def generate_and_perform_self_connected(connections, input_type):
 
 
 def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, input_type):
+    global I
     sim_dir = "balancedIE_{0}_{1}_{2}".format(exc_connections, inh_connections, input_type)
     for trial_number in range(1, NUMBER_OF_REPEATS + 1):
         if trial_number == 1:
@@ -171,6 +174,11 @@ def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, inp
             inh_input_conn = "<Connection In=\"INPUT_I\" Out=\"I\" num_connections=\"" + str(size) + "\" " \
                              "efficacy=\"-1.0\" delay=\"0.001\"/>\n\t\t  <Connection In=\"INPUT_I\" Out=\"E\" " \
                              "num_connections=\"" + str(size) + "\" efficacy=\"-1.0\" delay=\"0.001\"/>"
+            cortical_input = "<Node algorithm=\"CorticalBackground\" name=\"Background\" type=\"EXCITATORY_DIRECT\" />"
+            cortical_exc_input_conn = "<Connection In=\"Background\" Out=\"E\" num_connections=\"" \
+                                      + str(size) + "\" efficacy=\"1.0\" delay=\"0.001\"/>"
+            cortical_inh_input_conn = "<Connection In=\"Background\" Out=\"I\" num_connections=\"" \
+                                      + str(size) + "\" efficacy=\"1.0\" delay=\"0.001\"/>"
             simulation_xml = t.substitute({
                 "sim_dir": sim_dir,
                 "simulation_time": SIMULATION_TIME,
@@ -190,6 +198,10 @@ def generate_and_perform_balanced_ie(size, exc_connections, inh_connections, inp
             chdir(sim_dir)
             with open(sim_dir + ".xml", "w") as file:
                 file.write(simulation_xml)
+            if input_type == "cortical":
+                I = 80000.*size*1.
+            else:
+                I = 0.
             generate_files(sim_dir)
         else:
             chdir(sim_dir)
@@ -246,14 +258,19 @@ def main():
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_balanced_ie)(POPULATION_SIZES_MAX, exc_connections,
-                                                                        inh_connections, input_type)
-                              for exc_connections in range(1, POPULATION_SIZES_MAX+1)
-                              for inh_connections in range(1, POPULATION_SIZES_MAX+1)
-                              for input_type in ["poisson"])
-    jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_self_connected)(connections, input_type)
-                              for connections in range(1, POPULATION_SIZES_MAX+1)
-                              for input_type in ["poisson"])
+    # jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_balanced_ie)(POPULATION_SIZES_MAX, exc_connections,
+    #                                                                     inh_connections, input_type)
+    #                           for exc_connections in range(1, POPULATION_SIZES_MAX+1)
+    #                           for inh_connections in range(1, POPULATION_SIZES_MAX+1)
+    #                           for input_type in ["poisson"])
+    for exc_connections in range(1, POPULATION_SIZES_MAX + 1):
+        for inh_connections in range(1, POPULATION_SIZES_MAX + 1):
+            for input_type in ["cortical"]:
+                generate_and_perform_balanced_ie(POPULATION_SIZES_MAX, exc_connections, inh_connections, input_type)
+
+    # jobs = Parallel(n_jobs=4)(delayed(generate_and_perform_self_connected)(connections, input_type)
+    #                           for connections in range(1, POPULATION_SIZES_MAX+1)
+    #                           for input_type in ["poisson"])
     # for size in range(1, POPULATION_SIZES_MAX+1):
     #     for connections in range(1, size+1):
     #         for input_type in ["poisson", "cortical"]:

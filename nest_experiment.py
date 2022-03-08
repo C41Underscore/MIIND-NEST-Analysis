@@ -5,21 +5,23 @@ from os import mkdir, listdir, chdir, getcwd
 from shutil import rmtree
 from time import perf_counter
 from random import uniform
+from statistics import median
 
 
-NEST_NEURON_MODEL = "iaf_cond_alpha"
+NEST_NEURON_MODEL = "iaf_psc_alpha"
 NEST_SIMULATION_TIME = 200.
 
 DATA_LOCATION = "nest_results/"
 VOLTAGE_DATA_LOCATION = DATA_LOCATION + "multimeter/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
-NUMBER_OF_REPEATS = 5
+NUMBER_OF_REPEATS = 15
 
 POPULATION_SIZE_MIN = 5
 POPULATION_SIZE_MAX = 10
 MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZE_MAX
-NEST_SYNAPSE_TYPES = ["static_synapse", "tsodyks2_synapse"]
+CORTICAL_RATE = 1000.
+CORTICAL_SPIKE_INTERVAL = int((NEST_SIMULATION_TIME-1)/(((NEST_SIMULATION_TIME-1)/1000.)*CORTICAL_RATE))
 
 
 def create_and_reset_sim_dir(name):
@@ -30,13 +32,16 @@ def create_and_reset_sim_dir(name):
 
 # Rate as a Population Activity (Average over Several Neurons, Average over Several Runs)
 def average_firing_rate(t, dt, spikes):
+    # average_rate = []
     average_rate = 0
     for i in range(0, len(spikes)):
         number_of_spikes = 0
         for j in range(0, len(spikes[i])):
             if t <= spikes[i][j] <= (t+dt):
                 number_of_spikes += 1
+        # average_rate.append((1/dt)*(number_of_spikes/POPULATION_SIZE_MAX))
         average_rate += (1/len(spikes))*(1/dt)*(number_of_spikes/POPULATION_SIZE_MAX)
+    # average_rate = median(average_rate)
     return round(average_rate, 5)
 
 
@@ -93,7 +98,6 @@ def analyse_firing_rates(files):
 
 def compile_data():
     spike_files = listdir("./")
-    # extract self connected data
     balanced_ie_spike_files = []
     self_connected_spike_files = []
     for sf in spike_files:
@@ -117,7 +121,6 @@ def compile_data():
         record_spikes("inh_firing_rate", inh_firing_rates)
         chdir("..")
     for sim_dir in self_connected_spike_files:
-        # print(sim_dir)
         chdir(sim_dir)
         files = listdir("./")
         firing_rates = analyse_firing_rates(files)
@@ -136,6 +139,7 @@ def self_connected_network(size, connections, background_input, experiment_numbe
     spike_recorder = nest.Create("spike_recorder")
     spike_recorder.set(record_to="ascii", label=str("test" + str(experiment_number)))
     pop = nest.Create(NEST_NEURON_MODEL, size)
+
     exc_poisson = nest.Create("poisson_generator")
     exc_poisson.set(rate=80000.)
     inh_poisson = nest.Create("poisson_generator")
@@ -145,11 +149,8 @@ def self_connected_network(size, connections, background_input, experiment_numbe
         nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
         nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
     elif background_input == "cortical":
-        pop.set({"I_e": nest.random.uniform(min=376., max=450.)})
+        pop.set({"I_e": 376.})
 
-    # nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
-    #              syn_spec={"weight": 1.,
-    #                        "delay": 1.})
     nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
                  syn_spec={"weight": nest.random.uniform(min=0., max=2.),
                            "delay": 1.})
@@ -202,7 +203,6 @@ def nest_experiment():
     print("---NEST EXPERIMENT START---")
     start = perf_counter()
     # Iterate over sizes
-    # for size in range(1, POPULATION_SIZE_MAX + 1):
     for exc_connections in range(1, POPULATION_SIZE_MAX+1):
         for inh_connections in range(1, POPULATION_SIZE_MAX+1):
             for input_type in ["poisson", "cortical"]:
