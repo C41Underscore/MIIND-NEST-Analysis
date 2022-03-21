@@ -133,6 +133,7 @@ def kernel_settings():
     nest.SetKernelStatus({"overwrite_files": True})
     nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0.})
     nest.rng_seed = int(uniform(0., 2**32-1))
+    nest.local_num_threads = 8
 
 
 def self_connected_network(size, connections, background_input, experiment_number):

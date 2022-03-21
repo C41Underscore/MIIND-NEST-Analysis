@@ -10,14 +10,6 @@
           <Algorithm type="RateAlgorithm" name="InhibitoryInput">
                <rate>15000.</rate>
           </Algorithm>
-          <Algorithm type="OUAlgorithm" name="CorticalBackground">
-               <NeuronParameter>
-                    <t_membrane>20e-3</t_membrane>
-                    <t_refractive>0</t_refractive>
-                    <V_threshold>-55e-3</V_threshold>
-                    <V_reversal>-70e-3</V_reversal>
-               </NeuronParameter>
-          </Algorithm>
      </Algorithms>
      <Nodes>
           $exc_input
