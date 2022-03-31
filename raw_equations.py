@@ -51,25 +51,26 @@ def convert_train(spike_train):
 def main():
     vs, ge, ts, spike_train = conductance_lif(0., 0.2, 0.001, -0.070, -0.055, 0.020, 0.005)
 
-    plt.figure(1)
-    plt.title("Membrane Potential")
-    plt.plot(ts, vs)
+#    plt.figure(1)
+#    plt.title("Membrane Potential")
+#    plt.plot(ts, vs)
 
-    plt.figure(2)
-    plt.title("Conductance Variable")
-    plt.plot(ts, ge)
+ #   plt.figure(2)
+ #   plt.title("Conductance Variable")
+ #   plt.plot(ts, ge)
+    print(vs)
 
     spike_times = convert_train(spike_train)
-    plt.figure(3)
-    plt.title("Spike Train Input")
-    plt.eventplot(spike_times, linelengths=0.01)
+#    plt.figure(3)
+#    plt.title("Spike Train Input")
+#    plt.eventplot(spike_times, linelengths=0.01)
+#
+#    spikes = [convert_train(generate_spike_train(150, 0.001, 200)) for _ in range(0, 8)]
+#    plt.figure(4)
+#    plt.title("Spike Raster (Independent)")
+#    plt.eventplot(spikes)
 
-    spikes = [convert_train(generate_spike_train(150, 0.001, 200)) for _ in range(0, 8)]
-    plt.figure(4)
-    plt.title("Spike Raster (Independent)")
-    plt.eventplot(spikes)
-
-    plt.show()
+ #   plt.show()
 
 
 if __name__ == "__main__":
