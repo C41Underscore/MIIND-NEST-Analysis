@@ -32,23 +32,17 @@ def extract_spikes_from_recorder(filename, num_threads):
 
 
 results = []
-h_values = []
-v_values = []
 # mus = [MU + i*0.1 for i in range(0, 6)]
 
-sigmas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+sigmas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
 for i in range(0, len(sigmas)):
     SIGMA = sigmas[i]
     MU = 0.1
     TAU = 10.
     current_results = []
-    current_hs = []
-    current_vs = []
-    for j in range(0, 20):
+    for j in range(0, 6):
         H = (SIGMA ** 2) / MU
         V = (MU ** 2) / ((TAU / 1000.) * (SIGMA ** 2))
-        current_hs.append(H)
-        current_vs.append(V)
         nest.ResetKernel()
         nest.local_num_threads = 8
         nest.overwrite_files = True
@@ -87,17 +81,22 @@ for i in range(0, len(sigmas)):
             MU = 0.1
         MU = round(MU, 3)
     results.append(current_results)
-    h_values.append(current_hs)
-    v_values.append(current_vs)
     current_results = []
 
+parameter_results = []
+tau = 0.01
+for j in range(0, 20):
+    sigma = 1.0
+    mu = 0.1 + j/10.
+    h = sigma**2 / mu
+    v = mu**2 / tau*sigma**2
+    parameter_results.append((round(v, 3), round(h, 3)))
 
-# print(results)
+print(parameter_results)
+v_values = [i[0] for i in parameter_results]
+h_values = [i[1] for i in parameter_results]
 
-print(h_values)
-print(v_values)
-
-x = [0.1 + i*0.1 for i in range(0, 20)]
+x = [0.1 + i*0.1 for i in range(0, 6)]
 # print(x)
 
 plt.figure(1)
@@ -108,8 +107,6 @@ plt.legend(loc="upper left")
 
 plt.figure(2)
 plt.grid()
-for i in range(0, len(sigmas)):
-    plt.plot(v_values, h_values, label="\u03C3: " + str(sigmas[i]))
-plt.legend(loc="upper right")
+plt.plot(v_values, h_values)
 
 plt.show()
