@@ -2,11 +2,15 @@ import matplotlib.pyplot as plt
 from scipy.interpolate import make_interp_spline, BSpline
 from numpy import linspace
 from time import perf_counter
+from os import environ
+
+environ["DELAY_PYNEST_INIT"] = "1"
 import nest
+nest.ll_api.init(["nest", "-quiet"])
 
 
-POPULATION_SIZE = 95000
-SIMULATION_TIME = 1000
+POPULATION_SIZE = 1000000
+SIMULATION_TIME = 200.
 NUMBER_OF_THREADS = 8
 
 
@@ -27,24 +31,24 @@ def extract_spikes_from_recorder(filename, num_threads):
 
 
 sim_start = perf_counter()
-nest.ResetKernel()
-nest.overwrite_files = True
-# nest.total_num_virtual_procs = 4
-nest.local_num_threads = NUMBER_OF_THREADS
+nest.ResetNetwork()
+nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": NUMBER_OF_THREADS})
 
 n_dict = {"V_reset": 0., "tau_m": 50., "V_th": 1., "E_L": 0., "V_m": 0.}
 nest.SetDefaults("iaf_psc_delta", n_dict)
+nest.SetDefaults("poisson_generator", {"rate": 800.})
 
 pop = nest.Create("iaf_psc_delta", POPULATION_SIZE)
-input = nest.Create("poisson_generator", {"rate": 800.})
-spike_recorder = nest.Create("spike_recorder", {"label": "omurtag", "record_to": "ascii"})
+noise = nest.Create("poisson_generator")
+spike_recorder = nest.Create("spike_detector")
+nest.SetStatus(spike_recorder, {"record_to": ["file"], "label": "omurtag"})
 
-nest.Connect(input, pop, syn_spec={"weight": 0.03, "delay": 1.})
+nest.Connect(noise, pop, syn_spec={"weight": 0.03, "delay": 1.})
 nest.Connect(pop, spike_recorder)
 
 nest.Simulate(SIMULATION_TIME)
 
-spikes = extract_spikes_from_recorder("omurtag-%s-%s.dat", NUMBER_OF_THREADS)
+spikes = extract_spikes_from_recorder("omurtag-%s-%s.gdf", nest.GetKernelStatus("local_num_threads"))
 
 t = 0.
 dt = 10.
@@ -55,28 +59,15 @@ while t < SIMULATION_TIME:
         if t < spikes[i] < t+dt:
             count += 1
     count = (1000./dt)*(count/POPULATION_SIZE)
-    firing_rates.append(count)
+    firing_rates.append(str(round(count, 3)))
     t += dt
+
+
+data_string = ",".join(firing_rates)
+with open("omurtag.dat", "w") as data_file:
+	data_file.write(data_string)
+
 
 sim_end = perf_counter() - sim_start
 
 print("\nSimulation and Analysis time: " + str(sim_end))
-
-times = [i for i in range(0, SIMULATION_TIME, int(dt))]
-
-
-# average_firing_rates = []
-# for i in range(0, len(results[0])):
-#     average = sum([results[j][i] for j in range(0, len(results))])/len(results)
-#     average_firing_rates.append(average)
-
-
-# Curve smoothing tings
-smoothed_times = linspace(min(times), max(times), SIMULATION_TIME)
-spl = make_interp_spline(times, firing_rates, k=3)
-smoothed_rates = spl(smoothed_times)
-
-plt.figure(1)
-plt.title("Firing Rate.")
-plt.plot(smoothed_times, smoothed_rates)
-plt.show()

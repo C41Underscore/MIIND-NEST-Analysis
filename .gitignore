@@ -1,2 +1,8 @@
 nest_results/
 miind_files/*/
+*.gdf
+*.dat
+benchmarks/rate_0
+rate_0
+*.log
+*.model_mesh
