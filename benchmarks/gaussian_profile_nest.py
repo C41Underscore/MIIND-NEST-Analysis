@@ -3,6 +3,12 @@ import nest
 from math import sqrt
 from statistics import mean
 
+NEST_VERSION = "nest-3.1"
+try:
+    NEST_VERSION = nest.__version__
+except AttributeError:
+    NEST_VERSION = "nest-2"
+
 POPULATION_SIZE = 950
 SIMULATION_TIME = 1000.
 
@@ -43,24 +49,30 @@ for i in range(0, len(sigmas)):
     for j in range(0, 6):
         H = (SIGMA ** 2) / MU
         V = (MU ** 2) / ((TAU / 1000.) * (SIGMA ** 2))
-        nest.ResetKernel()
-        nest.local_num_threads = 8
-        nest.overwrite_files = True
+        if NEST_VERSION == "nest-3.1":
+            nest.ResetKernel()
+        else:
+            nest.ResetNetwork()
+        nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": 8})
         nest.set_verbosity(18)
-
         nest.SetDefaults("iaf_psc_delta", {"V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0.})
 
         pop = nest.Create("iaf_psc_delta", POPULATION_SIZE)
         noise = nest.Create("poisson_generator")
-        noise.set(rate=V)
-        spike_recorder = nest.Create("spike_recorder", {"label": "gaussian", "record_to": "ascii"})
-
+        nest.SetStatus(noise, {"rate": V})
+        if NEST_VERSION == "nest-3.1":
+            spike_recorder = nest.Create("spike_recorder", {"label": "gaussian", "record_to": "ascii"})
+        else:
+            spike_recorder = nest.Create("spike_detector", {"label": "gaussian", "record_to": ["file"]})
         nest.Connect(noise, pop, syn_spec={"weight": H})
         nest.Connect(pop, spike_recorder)
 
         nest.Simulate(1000.)
 
-        spikes = extract_spikes_from_recorder("gaussian-%s-%s.dat", nest.local_num_threads)
+        spikes = extract_spikes_from_recorder(
+                "gaussian-%s-%s.dat" if NEST_VERSION == "nest-3.1" else "gaussian-%s-%s.gdf",
+                nest.GetKernelStatus("local_num_threads")
+        )
 
         t = 0.
         dt = 10.
