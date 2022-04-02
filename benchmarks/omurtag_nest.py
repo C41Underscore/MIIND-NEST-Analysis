@@ -33,10 +33,7 @@ def extract_spikes_from_recorder(filename, num_threads):
 
 
 sim_start = perf_counter()
-if NEST_VERSION == "nest-3.1":
-    nest.ResetKernel()
-else:
-    nest.ResetNetwork()
+nest.ResetKernel()
 nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": NUMBER_OF_THREADS})
 
 n_dict = {"V_reset": 0., "tau_m": 50., "V_th": 1., "E_L": 0., "V_m": 0.}

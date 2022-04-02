@@ -49,10 +49,7 @@ for i in range(0, len(sigmas)):
     for j in range(0, 6):
         H = (SIGMA ** 2) / MU
         V = (MU ** 2) / ((TAU / 1000.) * (SIGMA ** 2))
-        if NEST_VERSION == "nest-3.1":
-            nest.ResetKernel()
-        else:
-            nest.ResetNetwork()
+        nest.ResetKernel()
         nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": 8})
         nest.set_verbosity(18)
         nest.SetDefaults("iaf_psc_delta", {"V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0.})
@@ -63,7 +60,8 @@ for i in range(0, len(sigmas)):
         if NEST_VERSION == "nest-3.1":
             spike_recorder = nest.Create("spike_recorder", {"label": "gaussian", "record_to": "ascii"})
         else:
-            spike_recorder = nest.Create("spike_detector", {"label": "gaussian", "record_to": ["file"]})
+            spike_recorder = nest.Create("spike_detector")
+            nest.SetStatus(spike_recorder, {"label": "gaussian", "record_to": ["file"]})
         nest.Connect(noise, pop, syn_spec={"weight": H})
         nest.Connect(pop, spike_recorder)
 
