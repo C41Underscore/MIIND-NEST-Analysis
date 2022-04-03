@@ -26,11 +26,10 @@ with open("rate_0", "r") as file:
             break
         else:
             line = line.split("\t")
-            lines.append(float(line[1][0:len(line[1])-1]))
+            lines.append(str(float(line[1][0:len(line[1])-1])))
 
 miind_results = lines[0:998]
-print(activities)
 
-plt.figure(1)
-plt.plot(activities)
-plt.show()
+activities = [str(i) for i in activities]
+with open("rate_0", "w") as file:
+    file.write(",".join(activities))

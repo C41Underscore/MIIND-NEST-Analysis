@@ -24,7 +24,7 @@
 	</Reporting>
 	<SimulationRunParameter>
 		<SimulationName>lif</SimulationName>
-		<t_end>2.0</t_end>
+		<t_end>1.0</t_end>
 		<t_step>0.001</t_step>
 		<name_log>lif.log</name_log>
 	</SimulationRunParameter>

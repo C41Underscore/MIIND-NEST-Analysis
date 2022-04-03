@@ -8,7 +8,7 @@ from random import uniform
 from statistics import median
 
 
-NEST_NEURON_MODEL = "iaf_psc_alpha"
+NEST_NEURON_MODEL = "iaf_psc_delta"
 NEST_SIMULATION_TIME = 200.
 
 DATA_LOCATION = "nest_results/"
