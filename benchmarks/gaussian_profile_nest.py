@@ -40,7 +40,7 @@ def extract_spikes_from_recorder(filename, num_threads):
 results = []
 # mus = [MU + i*0.1 for i in range(0, 6)]
 
-sigmas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1, 1.2, 1.3, 1.4, 1.5]
+sigmas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
 for i in range(0, len(sigmas)):
     SIGMA = sigmas[i]
     MU = 0.1

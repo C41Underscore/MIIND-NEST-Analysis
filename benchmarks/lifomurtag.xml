@@ -19,7 +19,7 @@
 	</Connections>
 	<Reporting>
 		<Rate Node="E" t_interval="0.001"/>
-		<Density Node="E" t_start="0.0" t_interval="0.001" t_end="2.0"/>
+		<Density Node="E" t_start="0.0" t_interval="0.001" t_end="1.0"/>
 <!--		<Rate Node="Background" t_interval="0.001"/>-->
 	</Reporting>
 	<SimulationRunParameter>

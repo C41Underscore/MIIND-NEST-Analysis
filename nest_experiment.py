@@ -9,19 +9,22 @@ from statistics import median
 
 
 NEST_NEURON_MODEL = "iaf_psc_delta"
-NEST_SIMULATION_TIME = 200.
+NEST_SIMULATION_TIME = 1000.
+NEST_NUMBER_OF_THREADS = 8
+NEST_VERSION = "nest-3.1"
+try:
+    NEST_VERSION = nest.__version__
+except AttributeError:
+    NEST_VERSION = "nest-2.2"
 
 DATA_LOCATION = "nest_results/"
-VOLTAGE_DATA_LOCATION = DATA_LOCATION + "multimeter/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
 NUMBER_OF_REPEATS = 15
 
 POPULATION_SIZE_MIN = 5
-POPULATION_SIZE_MAX = 10
-MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZE_MAX
-CORTICAL_RATE = 1000.
-CORTICAL_SPIKE_INTERVAL = int((NEST_SIMULATION_TIME-1)/(((NEST_SIMULATION_TIME-1)/1000.)*CORTICAL_RATE))
+POPULATION_SIZE = 950
+MAX_NUMBER_OF_CONNECTIONS = POPULATION_SIZE
 
 
 def create_and_reset_sim_dir(name):
@@ -40,7 +43,7 @@ def average_firing_rate(t, dt, spikes):
             if t <= spikes[i][j] <= (t+dt):
                 number_of_spikes += 1
         # average_rate.append((1/dt)*(number_of_spikes/POPULATION_SIZE_MAX))
-        average_rate += (1/len(spikes))*(1/dt)*(number_of_spikes/POPULATION_SIZE_MAX)
+        average_rate += (1/len(spikes))*(1/dt)*(number_of_spikes / POPULATION_SIZE)
     # average_rate = median(average_rate)
     return round(average_rate, 5)
 
@@ -58,23 +61,6 @@ def extract_spikes_from_recorder(filename):
             line = line.split("\t")
             spike_times.append(float(line[1]))
     return spike_times
-
-
-def extract_multimeter_data(filename):
-    times = []
-    voltage = []
-    with open(VOLTAGE_DATA_LOCATION + filename, "r") as file:
-        file.readline()
-        file.readline()
-        file.readline()
-        while file:
-            line = file.readline().strip("\n")
-            if line == "":
-                break
-            line = line.split('\t')
-            times.append(str(line[1]))
-            voltage.append(str(line[2]))
-    return times, voltage
 
 
 def record_spikes(filename, firing_rates):
@@ -130,27 +116,44 @@ def compile_data():
 
 def kernel_settings():
     nest.set_verbosity(18)
-    nest.SetKernelStatus({"overwrite_files": True})
+    nest.SetKernelStatus(
+        {
+            "local_num_threads": NEST_NUMBER_OF_THREADS,
+            "rng_seed": int(uniform(0., 2**32-1)),
+            "overwrite_files": True
+        }
+    )
     nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0.})
-    nest.rng_seed = int(uniform(0., 2**32-1))
-    nest.local_num_threads = 8
 
 
 def self_connected_network(size, connections, background_input, experiment_number):
-    spike_recorder = nest.Create("spike_recorder")
-    spike_recorder.set(record_to="ascii", label=str("test" + str(experiment_number)))
+    if NEST_VERSION == "nest-3.1":
+        spike_recorder = nest.Create("spike_recorder")
+        spike_recorder.set(record_to="ascii", label=str("test" + str(experiment_number)))
+    else:
+        spike_recorder = nest.Create("spike_detector")
+        nest.SetStatus(spike_recorder, {
+            "record_to": ["file"], "label": str("test" + str(experiment_number)), "file_extension": "dat"
+        })
     pop = nest.Create(NEST_NEURON_MODEL, size)
 
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=80000.)
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=15000.)
+    if NEST_VERSION == "nest-3.1":
+        exc_poisson.set(rate=80000.)
+        inh_poisson.set(rate=15000.)
+    else:
+        nest.SetStatus(exc_poisson, {"rate": 80000})
+        nest.SetStatus(inh_poisson, {"rate": 15000})
 
     if background_input == "poisson":
         nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
         nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
     elif background_input == "cortical":
-        pop.set({"I_e": 376.})
+        if NEST_VERSION == "nest-3.1":
+            pop.set({"I_e": 376.})
+        else:
+            nest.SetStatus(pop, {"I_e": 376.})
 
     nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
                  syn_spec={"weight": nest.random.uniform(min=0., max=2.),
@@ -160,23 +163,41 @@ def self_connected_network(size, connections, background_input, experiment_numbe
 
 
 def balanced_ie_network(size, exc_connections, inh_connections, background_input, experiment_number):
-    exc_spike_recorder = nest.Create("spike_recorder")
-    exc_spike_recorder.set(record_to="ascii", label=str("exc_test" + str(experiment_number)))
-
-    inh_spike_recorder = nest.Create("spike_recorder")
-    inh_spike_recorder.set(record_to="ascii", label=str("inh_test" + str(experiment_number)))
+    if NEST_VERSION == "nest-3.1":
+        exc_spike_recorder = nest.Create("spike_recorder")
+        exc_spike_recorder.set(record_to="ascii", label=str("exc_test" + str(experiment_number)))
+        inh_spike_recorder = nest.Create("spike_recorder")
+        inh_spike_recorder.set(record_to="ascii", label=str("inh_test" + str(experiment_number)))
+    else:
+        exc_spike_recorder = nest.Create("spike_detector")
+        nest.SetStatus(exc_spike_recorder, {
+            "record_to": ["file"], "label": str("exc_test" + str(experiment_number)), "file_extension": "dat"
+        })
+        inh_spike_recorder = nest.Create("spike_detector")
+        inh_spike_recorder.set(record_to="ascii", label=str("inh_test" + str(experiment_number)))
+        nest.SetStatus(inh_spike_recorder, {
+            "record_to": ["file"], "label": str("inh_test" + str(experiment_number)), "file_extension": "dat"
+        })
 
     # balanced I-E network
     epop = nest.Create(NEST_NEURON_MODEL, size)
     ipop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    exc_poisson.set(rate=80000.)
     inh_poisson = nest.Create("poisson_generator")
-    inh_poisson.set(rate=15000.)
+    if NEST_VERSION == "nest-3.1":
+        exc_poisson.set(rate=80000.)
+        inh_poisson.set(rate=15000.)
+    else:
+        nest.SetStatus(exc_poisson, {"rate": 80000.})
+        nest.SetStatus(inh_poisson, {"rate": 15000.})
 
     if background_input == "cortical":
-        epop.set({"I_e": 376.})
-        ipop.set({"I_e": 376.})
+        if NEST_VERSION == "nest-3.1":
+            epop.set({"I_e": 376.})
+            ipop.set({"I_e": 376.})
+        else:
+            nest.SetStatus(epop, {"I_e": 376.})
+            nest.SetStatus(ipop, {"I_e": 376.})
     elif background_input == "poisson":
         nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
         nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
@@ -204,8 +225,8 @@ def nest_experiment():
     print("---NEST EXPERIMENT START---")
     start = perf_counter()
     # Iterate over sizes
-    for exc_connections in range(1, POPULATION_SIZE_MAX+1):
-        for inh_connections in range(1, POPULATION_SIZE_MAX+1):
+    for exc_connections in range(1, POPULATION_SIZE + 1):
+        for inh_connections in range(1, POPULATION_SIZE + 1):
             for input_type in ["poisson", "cortical"]:
                 sim_name = "balancedIE_" + str(exc_connections) + "_" + \
                            str(inh_connections) + "_" + str(input_type)
@@ -214,12 +235,12 @@ def nest_experiment():
                 for i in range(1, NUMBER_OF_REPEATS+1):
                     count += 1
                     kernel_settings()
-                    balanced_ie_network(POPULATION_SIZE_MAX, exc_connections, inh_connections, input_type, i)
+                    balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, input_type, i)
                     nest.Simulate(NEST_SIMULATION_TIME)
                     nest.ResetKernel()
                 chdir("..")
 
-    for connections in range(1, POPULATION_SIZE_MAX+1):
+    for connections in range(1, POPULATION_SIZE + 1):
         for input_type in ["poisson", "cortical"]:
             sim_name = "selfconnected_" + str(connections) + "_" + str(input_type)
             create_and_reset_sim_dir(sim_name)
@@ -227,7 +248,7 @@ def nest_experiment():
             for i in range(0, NUMBER_OF_REPEATS):
                 count += 1
                 kernel_settings()
-                self_connected_network(POPULATION_SIZE_MAX, connections, input_type, i)
+                self_connected_network(POPULATION_SIZE, connections, input_type, i)
                 nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
             chdir("..")
