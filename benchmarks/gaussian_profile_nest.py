@@ -40,29 +40,42 @@ def extract_spikes_from_recorder(filename, num_threads):
 results = []
 # mus = [MU + i*0.1 for i in range(0, 6)]
 
-sigmas = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7]
+sigmas = [0.1, 0.3, 0.5, 0.7]
 for i in range(0, len(sigmas)):
     SIGMA = sigmas[i]
     MU = 0.1
-    TAU = 10.
+    TAU = 50.
     current_results = []
     for j in range(0, 20):
         H = (SIGMA ** 2) / MU
-        V = (MU ** 2) / ((TAU / 1000.) * (SIGMA ** 2))
         nest.ResetKernel()
         nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": 8})
         nest.set_verbosity(18)
         nest.SetDefaults("iaf_psc_delta", {"V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0.})
 
         pop = nest.Create("iaf_psc_delta", POPULATION_SIZE)
-        noise = nest.Create("poisson_generator")
-        nest.SetStatus(noise, {"rate": V})
+
+        if SIGMA < 0.5:
+            V = (MU ** 2) / ((TAU / 1000.) * (SIGMA ** 2))
+            noise = nest.Create("poisson_generator")
+            nest.SetStatus(noise, {"rate": V})
+            nest.Connect(noise, pop, syn_spec={"weight": H})
+        else:
+            V_E = round((H*MU + SIGMA**2)/(2*(TAU/1000.)*H**2))
+            V_I = round(((H*MU - SIGMA**2)/(2*(TAU/1000.)*H**2))*-1)
+            print(H, V_E, V_I)
+            noise_ex = nest.Create("poisson_generator")
+            noise_in = nest.Create("poisson_generator")
+            nest.SetStatus(noise_ex, {"rate": V_E})
+            nest.SetStatus(noise_in, {"rate": V_I})
+            nest.Connect(noise_ex, pop, syn_spec={"weight": H})
+            nest.Connect(noise_in, pop, syn_spec={"weight": -H})
+
         if NEST_VERSION == "nest-3.1":
             spike_recorder = nest.Create("spike_recorder", {"label": "gaussian", "record_to": "ascii"})
         else:
             spike_recorder = nest.Create("spike_detector")
             nest.SetStatus(spike_recorder, {"label": "gaussian", "record_to": ["file"]})
-        nest.Connect(noise, pop, syn_spec={"weight": H})
         nest.Connect(pop, spike_recorder)
 
         nest.Simulate(1000.)
@@ -93,18 +106,6 @@ for i in range(0, len(sigmas)):
     results.append(current_results)
     current_results = []
 
-parameter_results = []
-tau = 0.01
-for i in range(0, len(sigmas)):
-    current_results = []
-    for j in range(0, 20):
-        sigma = 1.0
-        mu = 0.1 + j/10.
-        h = sigma**2 / mu
-        v = mu**2 / tau*sigma**2
-        current_results.append((round(v, 3), round(h, 3)))
-    parameter_results.append(current_results)
-
 x = [0.1 + i*0.1 for i in range(0, 20)]
 # print(x)
 
@@ -112,6 +113,7 @@ plt.figure(1)
 plt.grid()
 for i in range(0, len(sigmas)):
     plt.plot(x, results[i], label="\u03C3: " + str(sigmas[i]))
+    print(results[i])
 plt.legend(loc="upper left")
 
 plt.show()

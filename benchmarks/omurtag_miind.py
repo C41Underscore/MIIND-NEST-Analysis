@@ -3,7 +3,7 @@
 import matplotlib.pyplot as plt
 import miind.miindsim as miind
 
-miind.init(1, "lifomurtag.xml")
+miind.init(1, "omurtag.xml")
 
 timestep = miind.getTimeStep()
 simulation_length = miind.getSimulationLength()
@@ -30,6 +30,10 @@ with open("rate_0", "r") as file:
 
 miind_results = lines[0:998]
 
-activities = [str(i) for i in activities]
+plt.figure(1)
+plt.plot(activities)
+plt.show()
+
+activities = [str(round(i, 2)) for i in activities]
 with open("rate_0", "w") as file:
     file.write(",".join(activities))

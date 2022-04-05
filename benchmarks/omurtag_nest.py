@@ -36,7 +36,7 @@ sim_start = perf_counter()
 nest.ResetKernel()
 nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": NUMBER_OF_THREADS})
 
-n_dict = {"V_reset": 0., "tau_m": 50., "V_th": 1., "E_L": 0., "V_m": 0.}
+n_dict = {"V_reset": 0., "tau_m": 50., "V_th": 1., "E_L": 0., "V_m": 0., "V_min": -1.}
 nest.SetDefaults("iaf_psc_delta", n_dict)
 nest.SetDefaults("poisson_generator", {"rate": 800.})
 
@@ -65,7 +65,7 @@ while t < SIMULATION_TIME:
         if t < spikes[i] < t+dt:
             count += 1
     count = (1000./dt)*(count/POPULATION_SIZE)
-    firing_rates.append(str(round(count, 3)))
+    firing_rates.append(str(round(count, 2)))
     t += dt
 
 
