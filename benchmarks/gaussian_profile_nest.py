@@ -9,8 +9,10 @@ try:
 except AttributeError:
     NEST_VERSION = "nest-2"
 
-POPULATION_SIZE = 950
+POPULATION_SIZE = 95
 SIMULATION_TIME = 1000.
+
+NUMBER_OF_DEVICES = 2
 
 
 # print("h: " + str(H))
@@ -24,7 +26,7 @@ def write_gaussian_values():
 def extract_spikes_from_recorder(filename, num_threads):
     spike_times = []
     for rank in range(0, num_threads):
-        with open(filename % (POPULATION_SIZE + 2, rank)) as file:
+        with open(filename % (POPULATION_SIZE + NUMBER_OF_DEVICES, rank)) as file:
             file.readline()
             file.readline()
             file.readline()
@@ -40,36 +42,39 @@ def extract_spikes_from_recorder(filename, num_threads):
 results = []
 # mus = [MU + i*0.1 for i in range(0, 6)]
 
-sigmas = [0.1, 0.3, 0.5, 0.7]
+sigmas = [0.1, 0.3, 0.5, 0.7, 0.9]
 for i in range(0, len(sigmas)):
     SIGMA = sigmas[i]
     MU = 0.1
-    TAU = 50.
+    TAU = 10.
     current_results = []
-    for j in range(0, 20):
+    for j in range(0, 10):
         H = (SIGMA ** 2) / MU
         nest.ResetKernel()
         nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": 8})
         nest.set_verbosity(18)
-        nest.SetDefaults("iaf_psc_delta", {"V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0.})
+        nest.SetDefaults("iaf_psc_delta", {"V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0., "I_e": 0.})
 
         pop = nest.Create("iaf_psc_delta", POPULATION_SIZE)
 
         if SIGMA < 0.5:
+            NUMBER_OF_DEVICES = 2
             V = (MU ** 2) / ((TAU / 1000.) * (SIGMA ** 2))
             noise = nest.Create("poisson_generator")
             nest.SetStatus(noise, {"rate": V})
             nest.Connect(noise, pop, syn_spec={"weight": H})
         else:
-            V_E = round((H*MU + SIGMA**2)/(2*(TAU/1000.)*H**2))
-            V_I = round(((H*MU - SIGMA**2)/(2*(TAU/1000.)*H**2))*-1)
-            print(H, V_E, V_I)
+            NUMBER_OF_DEVICES = 3
+            J = 0.1
+            V_E = round((J*MU + SIGMA**2)/(2*(TAU/1000.)*J**2), 3)
+            V_I = round(((J*MU - SIGMA**2)/(2*(TAU/1000.)*J**2))*-1, 3)
+            # print(SIGMA, MU, J, V_E, V_I)
             noise_ex = nest.Create("poisson_generator")
             noise_in = nest.Create("poisson_generator")
             nest.SetStatus(noise_ex, {"rate": V_E})
             nest.SetStatus(noise_in, {"rate": V_I})
-            nest.Connect(noise_ex, pop, syn_spec={"weight": H})
-            nest.Connect(noise_in, pop, syn_spec={"weight": -H})
+            nest.Connect(noise_ex, pop, syn_spec={"weight": J})
+            nest.Connect(noise_in, pop, syn_spec={"weight": -J})
 
         if NEST_VERSION == "nest-3.1":
             spike_recorder = nest.Create("spike_recorder", {"label": "gaussian", "record_to": "ascii"})
@@ -78,6 +83,7 @@ for i in range(0, len(sigmas)):
             nest.SetStatus(spike_recorder, {"label": "gaussian", "record_to": ["file"]})
         nest.Connect(pop, spike_recorder)
 
+        # print(nest.GetConnections())
         nest.Simulate(1000.)
 
         spikes = extract_spikes_from_recorder(
@@ -106,14 +112,13 @@ for i in range(0, len(sigmas)):
     results.append(current_results)
     current_results = []
 
-x = [0.1 + i*0.1 for i in range(0, 20)]
-# print(x)
+mus = [0.1 + i*0.1 for i in range(0, 10)]
 
-plt.figure(1)
-plt.grid()
-for i in range(0, len(sigmas)):
-    plt.plot(x, results[i], label="\u03C3: " + str(sigmas[i]))
-    print(results[i])
-plt.legend(loc="upper left")
+with open("gaussians_nest.dat", "w") as file:
+    file.write(",".join([str(i) for i in sigmas]) + "\n")
+    file.write(",".join([str(round(i, 2)) for i in mus]) + "\n")
+    for i in range(0, len(sigmas)):
+        data = [str(round(i, 3)) for i in results[i]]
+        data = ",".join(data) + "\n"
+        file.write(data)
 
-plt.show()
