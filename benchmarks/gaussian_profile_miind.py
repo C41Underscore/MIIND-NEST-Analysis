@@ -7,7 +7,7 @@ import miind.miindsim as miind
 
 sigmas = [0.1, 0.3, 0.5, 0.7, 0.9]
 mus = [0.1 + i*0.1 for i in range(0, 10)]
-TAU = 10e-3
+TAU = 0.05
 
 GENERATE_FILES = False
 
@@ -32,10 +32,10 @@ def clean_dir():
 # generate-matrix
 def generate_simulation_files(name, efficacy):
     miind_filegen_cmds = ["sim %s.xml" % sim_name,
-                          "generate-lif-mesh %s %f 1. 0. -1. 0.001 500" % (name, TAU),
+                          "generate-lif-mesh %s %f 1. 0. -1. 0.001 750" % (name, TAU),
                           "generate-model %s 0. 1." % name,
                           "generate-empty-fid %s" % name,
-                          "generate-matrix %s %f 100" % (name, efficacy)
+                          "generate-matrix %s %f 100 0.0 0.0 true" % (name, efficacy)
                           ]
     for cmd in miind_filegen_cmds:
         system("python3 -m miind.miindio " + cmd)
@@ -105,27 +105,30 @@ results = []
 for i in sigmas:
     current_results = []
     for j in mus:
+        print(count)
         miind.init("gaussian" + str(count) + ".xml", 1)
         timestep = miind.getTimeStep()
         simulation_length = miind.getSimulationLength()
         miind.startSimulation()
+        activities = []
         for _ in range(0, int(simulation_length/timestep)):
-            miind.evolveSingleStep([])
+            activities.append(round(miind.evolveSingleStep([])[0], 3))
         miind.endSimulation()
-        try:
-            with open("gaussian" + str(count) + "_/rate_0", "r") as file:
-                data = []
-                for line in file:
-                    data.append(float(line.split("\t")[1]))
-                current_results.append(mean(data))
-            count += 1
-        except FileNotFoundError:
-            with open("rate_0", "r") as file:
-                data = []
-                for line in file:
-                    data.append(float(line.split("\t")[1]))
-                current_results.append(max(data))
-            count += 1
+        current_results.append(mean(activities))
+        # try:
+        #     with open("gaussian" + str(count) + "_/rate_0", "r") as file:
+        #         data = []
+        #         for line in file:
+        #             data.append(float(line.split("\t")[1]))
+        #         current_results.append(mean(data))
+        #     count += 1
+        # except FileNotFoundError:
+        #     with open("rate_0", "r") as file:
+        #         data = []
+        #         for line in file:
+        #             data.append(float(line.split("\t")[1]))
+        #         current_results.append(mean(data))
+        count += 1
     results.append(current_results)
 
 
@@ -142,4 +145,5 @@ plt.grid()
 for i in range(0, len(sigmas)):
     plt.plot(mus, results[i], label="\u03C3: " + str(sigmas[i]))
 plt.legend(loc="upper left")
+plt.title("Gaussian Profile (MIIND)")
 plt.show()

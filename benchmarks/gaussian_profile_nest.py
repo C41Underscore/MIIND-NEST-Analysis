@@ -9,8 +9,8 @@ try:
 except AttributeError:
     NEST_VERSION = "nest-2"
 
-POPULATION_SIZE = 95
-SIMULATION_TIME = 1000.
+POPULATION_SIZE = 9500
+SIMULATION_TIME = 500.
 
 NUMBER_OF_DEVICES = 2
 
@@ -40,20 +40,20 @@ def extract_spikes_from_recorder(filename, num_threads):
 
 
 results = []
-# mus = [MU + i*0.1 for i in range(0, 6)]
+individual_result = []
 
 sigmas = [0.1, 0.3, 0.5, 0.7, 0.9]
 for i in range(0, len(sigmas)):
     SIGMA = sigmas[i]
     MU = 0.1
-    TAU = 10.
+    TAU = 50.
     current_results = []
     for j in range(0, 10):
-        H = (SIGMA ** 2) / MU
+        H = round((SIGMA ** 2) / MU, 3)
         nest.ResetKernel()
         nest.SetKernelStatus({"overwrite_files": True, "local_num_threads": 8})
         nest.set_verbosity(18)
-        nest.SetDefaults("iaf_psc_delta", {"V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0., "I_e": 0.})
+        nest.SetDefaults("iaf_psc_delta", {"V_min": -1., "V_m": 0., "E_L": 0., "tau_m": TAU, "V_th": 1., "V_reset": 0.})
 
         pop = nest.Create("iaf_psc_delta", POPULATION_SIZE)
 
@@ -84,7 +84,7 @@ for i in range(0, len(sigmas)):
         nest.Connect(pop, spike_recorder)
 
         # print(nest.GetConnections())
-        nest.Simulate(1000.)
+        nest.Simulate(SIMULATION_TIME)
 
         spikes = extract_spikes_from_recorder(
                 "gaussian-%s-%s.dat" if NEST_VERSION == "nest-3.1" else "gaussian-%s-%s.gdf",
@@ -102,6 +102,9 @@ for i in range(0, len(sigmas)):
             count = (1000./dt)*(count/POPULATION_SIZE)
             firing_rates.append(count)
             t += dt
+
+        if SIGMA == 0.3 and MU == 0.7:
+            individual_result = firing_rates.copy()
 
         current_results.append(mean(firing_rates))
 
@@ -122,3 +125,14 @@ with open("gaussians_nest.dat", "w") as file:
         data = ",".join(data) + "\n"
         file.write(data)
 
+plt.figure(1)
+plt.grid()
+for i in range(0, len(sigmas)):
+    plt.plot(mus, results[i], label="\u03C3: " + str(sigmas[i]))
+plt.legend(loc="upper left")
+plt.title("Gaussian Profile (NEST)")
+# plt.figure(2)
+# plt.grid()
+# plt.plot(individual_result)
+
+plt.show()

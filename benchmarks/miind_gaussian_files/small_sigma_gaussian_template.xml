@@ -6,8 +6,8 @@
 			<TimeStep>0.001</TimeStep>
 			<MatrixFile>${mat_file}</MatrixFile>
 		</Algorithm>
-		<Algorithm type="RateFunctor" name="ExcInput">
-			<expression>${exc_rate}</expression>
+		<Algorithm type="RateAlgorithm" name="ExcInput">
+			<rate>${exc_rate}</rate>
 		</Algorithm>
 	</Algorithms>
 	<Nodes>
@@ -16,13 +16,14 @@
 	</Nodes>
 	<Connections>
 		<Connection In="Background" Out="E" num_connections="1" efficacy="${h}" delay="0.001"/>
+		<OutgoingConnection Node="E"/>
 	</Connections>
 	<Reporting>
 		<Rate Node="E" t_interval="0.001"/>
 	</Reporting>
 	<SimulationRunParameter>
 		<SimulationName>${sim_name}</SimulationName>
-		<t_end>1.0</t_end>
+		<t_end>0.5</t_end>
 		<t_step>0.001</t_step>
 		<name_log>${sim_name}.log</name_log>
 	</SimulationRunParameter>
