@@ -164,9 +164,7 @@ def self_connected_network(size, connections, experiment_number):
                             "delay": 1.})
     else:
         nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
-                     syn_spec={
-                               "weight": {"distribution": "uniform", "low": 0., "high": 1.},
-                               "delay": 1.})
+                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.}, "delay": 1.})
 
     nest.Connect(pop, spike_recorder)
 
@@ -218,10 +216,18 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
                      syn_spec={"weight": nest.random.uniform(min=-1., max=0.),
                                "delay": 1.})
     else:
-        exc_node_info = nest.GetStatus(epop)
-        exc_local_nodes = [(ni["global_id"], ni["vp"]) for ni in exc_node_info if ni["local"]]
-        inh_node_info = nest.GetStatus(ipop)
-        inh_local_nodes = [(ni["global_id"], ni["vp"]) for ni in inh_node_info if ni["local"]]
+        nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.},
+                               "delay": 1.})
+        nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": {"distribution": "uniform", "low": -1., "high": 0.},
+                               "delay": 1.})
+        nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": {"distribution": "uniform", "low": 0, "high": 1.},
+                               "delay": 1.})
+        nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": {"distribution": "uniform", "low": -1., "high": 0.},
+                               "delay": 1.})
 
     nest.Connect(epop, exc_spike_recorder)
     nest.Connect(ipop, inh_spike_recorder)
