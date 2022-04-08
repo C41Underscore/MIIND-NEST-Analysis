@@ -116,10 +116,13 @@ def kernel_settings():
     nest.SetKernelStatus(
         {
             "local_num_threads": NEST_NUMBER_OF_THREADS,
-            "rng_seed": int(uniform(0., 2**32-1)),
             "overwrite_files": True
         }
     )
+    if NEST_VERSION == "nest-3.1":
+        nest.rng_seed = int(uniform(0., 2**32 - 1))
+    else:
+        nest.SetKernelStatus({"grng_seed": int(uniform(0., 2**32 - 1))})
     nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0., "V_th": -55., "V_reset": -70., "E_L": -70., "tau_m": 50.})
 
 
@@ -165,7 +168,6 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
             "record_to": ["file"], "label": str("exc_test" + str(experiment_number)), "file_extension": "dat"
         })
         inh_spike_recorder = nest.Create("spike_detector")
-        inh_spike_recorder.set(record_to="ascii", label=str("inh_test" + str(experiment_number)))
         nest.SetStatus(inh_spike_recorder, {
             "record_to": ["file"], "label": str("inh_test" + str(experiment_number)), "file_extension": "dat"
         })
