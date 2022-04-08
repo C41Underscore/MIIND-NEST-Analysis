@@ -24,7 +24,7 @@ SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
 NUMBER_OF_REPEATS = 5
 
-POPULATION_SIZE = 10
+POPULATION_SIZE = 100
 
 
 def create_and_reset_sim_dir(name):
@@ -103,7 +103,7 @@ def compile_data():
         exc_firing_rates = analyse_firing_rates(exc_files)
         record_spikes("exc_firing_rates", exc_firing_rates)
         inh_firing_rates = analyse_firing_rates(inh_files)
-        record_spikes("inh_firing_rate", inh_firing_rates)
+        record_spikes("inh_firing_rates", inh_firing_rates)
         chdir("..")
     for sim_dir in self_connected_spike_files:
         chdir(sim_dir)
@@ -223,7 +223,7 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
                      syn_spec={"weight": {"distribution": "uniform", "low": -1., "high": 0.},
                                "delay": 1.})
         nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": 0, "high": 1.},
+                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.},
                                "delay": 1.})
         nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
                      syn_spec={"weight": {"distribution": "uniform", "low": -1., "high": 0.},
@@ -246,8 +246,8 @@ def nest_experiment():
             for i in range(1, NUMBER_OF_REPEATS+1):
                 count += 1
                 kernel_settings()
-                #balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
-                #nest.Simulate(NEST_SIMULATION_TIME)
+                balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
+                nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
             chdir("..")
 
