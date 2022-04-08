@@ -152,8 +152,8 @@ def self_connected_network(size, connections, experiment_number):
         exc_poisson.set(rate=80000.)
         inh_poisson.set(rate=15000.)
     else:
-        nest.SetStatus(exc_poisson, {"rate": 80000})
-        nest.SetStatus(inh_poisson, {"rate": 15000})
+        nest.SetStatus(exc_poisson, {"rate": 80000.})
+        nest.SetStatus(inh_poisson, {"rate": 15000.})
 
     nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
     nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
@@ -164,7 +164,7 @@ def self_connected_network(size, connections, experiment_number):
                             "delay": 1.})
     else:
         nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
-                     syn_spec={"model": "excitatory",
+                     syn_spec={
                                "weight": {"distribution": "uniform", "low": 0., "high": 1.},
                                "delay": 1.})
 
@@ -240,8 +240,8 @@ def nest_experiment():
             for i in range(1, NUMBER_OF_REPEATS+1):
                 count += 1
                 kernel_settings()
-                balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
-                nest.Simulate(NEST_SIMULATION_TIME)
+                #balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
+                #nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
             chdir("..")
 
