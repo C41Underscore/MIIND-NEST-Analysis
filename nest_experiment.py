@@ -1,6 +1,6 @@
 import nest
 from os.path import isdir
-from os import mkdir, listdir, chdir, getcwd
+from os import mkdir, listdir, chdir, getcwd, system
 from shutil import rmtree
 from time import perf_counter
 from random import uniform
@@ -22,9 +22,9 @@ if NEST_VERSION == "nest-2.2":
 DATA_LOCATION = "nest_results/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
-NUMBER_OF_REPEATS = 5
+NUMBER_OF_REPEATS = 10
 
-POPULATION_SIZE = 100
+POPULATION_SIZE = 10
 
 
 def create_and_reset_sim_dir(name):
@@ -43,7 +43,7 @@ def average_firing_rate(t, dt, spikes):
             if t <= spikes[i][j] <= (t+dt):
                 number_of_spikes += 1
         average_rate += (1/len(spikes))*(1/dt)*(number_of_spikes / POPULATION_SIZE)
-    return round(average_rate, 5)
+    return round(average_rate, 3)
 
 
 def extract_spikes_from_recorder(filename):
@@ -113,6 +113,29 @@ def compile_data():
         chdir("..")
 
 
+def generate_selfconnected_firing_rates():
+    files = listdir("./")
+    firing_rates = analyse_firing_rates(files)
+    system("rm *.dat")
+    record_spikes("firing_rates", firing_rates)
+
+
+def generate_balancedei_firing_rates():
+    exc_files = []
+    inh_files = []
+    files = listdir("./")
+    for file in files:
+        if file[0:3] == "exc":
+            exc_files.append(file)
+        else:
+            inh_files.append(file)
+    exc_firing_rates = analyse_firing_rates(exc_files)
+    inh_firing_rates = analyse_firing_rates(inh_files)
+    system("rm *.dat")
+    record_spikes("exc_firing_rates", exc_firing_rates)
+    record_spikes("inh_firing_rates", inh_firing_rates)
+
+
 def kernel_settings():
     global pyrngs
     nest.set_verbosity(18)
@@ -132,7 +155,7 @@ def kernel_settings():
         pyrngs = [np.random.RandomState(s) for s in msdrange1]
         msdrange2 = range(msd+n_vp+1, msd+1+2*n_vp)
         nest.SetKernelStatus({"grng_seed": msd+n_vp, "rng_seeds": msdrange2})
-    nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0., "V_th": -55., "V_reset": -70., "E_L": -70., "tau_m": 50.})
+    nest.SetDefaults(NEST_NEURON_MODEL, {"V_th": -55., "V_reset": -70., "E_L": -70., "V_min": -75., "tau_m": 50.})
 
 
 def self_connected_network(size, connections, experiment_number):
@@ -147,20 +170,20 @@ def self_connected_network(size, connections, experiment_number):
     pop = nest.Create(NEST_NEURON_MODEL, size)
 
     exc_poisson = nest.Create("poisson_generator")
-    inh_poisson = nest.Create("poisson_generator")
+    # inh_poisson = nest.Create("poisson_generator")
     if NEST_VERSION == "nest-3.1":
-        exc_poisson.set(rate=80000.)
-        inh_poisson.set(rate=15000.)
+        exc_poisson.set(rate=800.)
+        # inh_poisson.set(rate=15000.)
     else:
         nest.SetStatus(exc_poisson, {"rate": 80000.})
-        nest.SetStatus(inh_poisson, {"rate": 15000.})
+        # nest.SetStatus(inh_poisson, {"rate": 15000.})
 
     nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
-    nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
+    # nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
 
     if NEST_VERSION == "nest-3.1":
         nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
-                    syn_spec={"weight": nest.random.uniform(min=0., max=2.),
+                    syn_spec={"weight": uniform(0., 1.),
                             "delay": 1.})
     else:
         nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
@@ -189,31 +212,31 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
     epop = nest.Create(NEST_NEURON_MODEL, size)
     ipop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    inh_poisson = nest.Create("poisson_generator")
+    # inh_poisson = nest.Create("poisson_generator")
     if NEST_VERSION == "nest-3.1":
-        exc_poisson.set(rate=80000.)
-        inh_poisson.set(rate=15000.)
+        exc_poisson.set(rate=800.)
+        # inh_poisson.set(rate=15000.)
     else:
-        nest.SetStatus(exc_poisson, {"rate": 80000.})
-        nest.SetStatus(inh_poisson, {"rate": 15000.})
+        nest.SetStatus(exc_poisson, {"rate": 8000.})
+        # nest.SetStatus(inh_poisson, {"rate": 15000.})
 
     nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
     nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
-    nest.Connect(inh_poisson, epop, syn_spec={"weight": -1.})
-    nest.Connect(inh_poisson, ipop, syn_spec={"weight": -1.})
+    # nest.Connect(inh_poisson, epop, syn_spec={"weight": -1.})
+    # nest.Connect(inh_poisson, ipop, syn_spec={"weight": -1.})
 
     if NEST_VERSION == "nest-3.1":
         nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                     syn_spec={"weight": nest.random.uniform(min=0., max=1.),
+                     syn_spec={"weight": uniform(0., 1.),
                                "delay": 1.})
         nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                     syn_spec={"weight": nest.random.uniform(min=-1., max=0.),
+                     syn_spec={"weight": uniform(-1., 0.),
                                "delay": 1.})
         nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                     syn_spec={"weight": nest.random.uniform(min=0., max=1.),
+                     syn_spec={"weight": uniform(0., 1.),
                                "delay": 1.})
         nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                     syn_spec={"weight": nest.random.uniform(min=-1., max=0.),
+                     syn_spec={"weight": uniform(-1., 0.),
                                "delay": 1.})
     else:
         nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
@@ -249,6 +272,7 @@ def nest_experiment():
                 balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
                 nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
+            generate_balancedei_firing_rates()
             chdir("..")
 
     for connections in range(1, POPULATION_SIZE + 1):
@@ -261,6 +285,7 @@ def nest_experiment():
             self_connected_network(POPULATION_SIZE, connections, i)
             nest.Simulate(NEST_SIMULATION_TIME)
             nest.ResetKernel()
+        generate_selfconnected_firing_rates()
         chdir("..")
 
     total_time = round(perf_counter() - start, 2)
@@ -274,7 +299,7 @@ def main():
     chdir("nest_results")
     print("---NEST EXPERIMENT START---")
     nest_experiment()
-    compile_data()
+    # compile_data()
     print("---NEST EXPERIMENT END---")
 
 

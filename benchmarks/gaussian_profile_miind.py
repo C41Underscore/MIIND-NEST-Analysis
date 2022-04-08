@@ -115,19 +115,6 @@ for i in sigmas:
             activities.append(round(miind.evolveSingleStep([])[0], 3))
         miind.endSimulation()
         current_results.append(mean(activities))
-        # try:
-        #     with open("gaussian" + str(count) + "_/rate_0", "r") as file:
-        #         data = []
-        #         for line in file:
-        #             data.append(float(line.split("\t")[1]))
-        #         current_results.append(mean(data))
-        #     count += 1
-        # except FileNotFoundError:
-        #     with open("rate_0", "r") as file:
-        #         data = []
-        #         for line in file:
-        #             data.append(float(line.split("\t")[1]))
-        #         current_results.append(mean(data))
         count += 1
     results.append(current_results)
 

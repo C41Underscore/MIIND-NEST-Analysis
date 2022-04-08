@@ -1,25 +1,26 @@
 <Simulation>
      <WeightType>CustomConnectionParameters</WeightType>
      <Algorithms>
-          <Algorithm type="GridAlgorithm" name="COND" modelfile="$sim_dir.model" tau_refractive="0.0" transformfile="${sim_dir}_0_0_0_0_.tmat" start_v="-0.070" start_w="0.0" >
-               <TimeStep>$timestep</TimeStep>
+          <Algorithm type="MeshAlgorithmCustom" name="LIF" modelfile="${sim_name}noise.model">
+               <TimeStep>${time_step}</TimeStep>
+               <MatrixFile>${matrix_fileNoise}</MatrixFile>
+               <MatrixFile>${matrix_fileEE}</MatrixFile>
+               <MatrixFile>${matrix_fileII}</MatrixFile>
+               <MatrixFile>${matrix_fileEI}</MatrixFile>
+               <MatrixFile>${matrix_fileIE}</MatrixFile>
           </Algorithm>
-		  <Algorithm type="RateAlgorithm" name="ExcitatoryInput">
-               <rate>80000.</rate>
-          </Algorithm>
-          <Algorithm type="RateAlgorithm" name="InhibitoryInput">
-               <rate>15000.</rate>
+		  <Algorithm type="RateAlgorithm" name="ExcInput">
+               <rate>800.</rate>
           </Algorithm>
      </Algorithms>
      <Nodes>
-          $exc_input
-          $inh_input
-          <Node algorithm="COND" name="E" type="EXCITATORY_DIRECT" />
-          <Node algorithm="COND" name="I" type="INHIBITORY_DIRECT" />
+          <Node algorithm="ExcInput" name="Noise" type="EXCITATORY"/>
+          <Node algorithm="LIF" name="E" type="EXCITATORY"/>
+          <Node algorithm="LIF" name="I" type="INHIBITORY"/>
      </Nodes>
      <Connections>
-          $exc_input_conn
-          $inh_input_conn
+          <Connection In="Noise" Out="E" num_connections="1" efficacy="1." delay="0.001"/>
+          <Connection In="Noise" Out="I" num_connections="1" efficacy="1." delay="0.001"/>
           <Connection In="E" Out="E" num_connections="$exc_connections" efficacy="$randomEE" delay="0.001"/>
           <Connection In="I" Out="I" num_connections="$inh_connections" efficacy="$randomII" delay="0.001"/>
           <Connection In="E" Out="I" num_connections="$exc_connections" efficacy="$randomEI" delay="0.001"/>
@@ -32,9 +33,9 @@
           <Rate node="I" t_interval="0.001" />
      </Reporting>
      <SimulationRunParameter>
-          <SimulationName>$sim_dir</SimulationName>
+          <SimulationName>$sim_name</SimulationName>
           <t_end>$simulation_time</t_end>
-          <t_step>$timestep</t_step>
-          <name_log>$sim_dir.log</name_log>
+          <t_step>${time_step}</t_step>
+          <name_log>$sim_name.log</name_log>
      </SimulationRunParameter>
 </Simulation>
