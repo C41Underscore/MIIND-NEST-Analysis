@@ -1,21 +1,23 @@
-import matplotlib.pyplot as plt
 import nest
 from os.path import isdir
 from os import mkdir, listdir, chdir, getcwd
 from shutil import rmtree
 from time import perf_counter
 from random import uniform
-from statistics import median
 
 
 NEST_NEURON_MODEL = "iaf_psc_delta"
 NEST_SIMULATION_TIME = 1000.
 NEST_NUMBER_OF_THREADS = 8
 NEST_VERSION = "nest-3.1"
+pyrngs = []
 try:
     NEST_VERSION = nest.__version__
 except AttributeError:
     NEST_VERSION = "nest-2.2"
+
+if NEST_VERSION == "nest-2.2":
+    import numpy as np
 
 DATA_LOCATION = "nest_results/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
@@ -112,6 +114,7 @@ def compile_data():
 
 
 def kernel_settings():
+    global pyrngs
     nest.set_verbosity(18)
     nest.SetKernelStatus(
         {
@@ -122,7 +125,13 @@ def kernel_settings():
     if NEST_VERSION == "nest-3.1":
         nest.rng_seed = int(uniform(0., 2**32 - 1))
     else:
-        nest.SetKernelStatus({"grng_seed": int(uniform(0., 2**32 - 1))})
+        # code from: https://nest-simulator.org/wp-content/uploads/2015/02/NEST_by_Example.pdf, page 12
+        msd = int(uniform(0., 2**32 - 1))
+        n_vp = nest.GetKernelStatus("total_num_virtual_procs")
+        msdrange1 = range(msd, msd+n_vp)
+        pyrngs = [np.random.RandomState(s) for s in msdrange1]
+        msdrange2 = range(msd+n_vp+1, msd+1+2*n_vp)
+        nest.SetKernelStatus({"grng_seed": msd+n_vp, "rng_seeds": msdrange2})
     nest.SetDefaults(NEST_NEURON_MODEL, {"I_e": 0., "V_th": -55., "V_reset": -70., "E_L": -70., "tau_m": 50.})
 
 
@@ -149,9 +158,15 @@ def self_connected_network(size, connections, experiment_number):
     nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
     nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
 
-    nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
-                 syn_spec={"weight": nest.random.uniform(min=0., max=2.),
-                           "delay": 1.})
+    if NEST_VERSION == "nest-3.1":
+        nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
+                    syn_spec={"weight": nest.random.uniform(min=0., max=2.),
+                            "delay": 1.})
+    else:
+        nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
+                     syn_spec={"model": "excitatory",
+                               "weight": {"distribution": "uniform", "low": 0., "high": 1.},
+                               "delay": 1.})
 
     nest.Connect(pop, spike_recorder)
 
@@ -188,18 +203,26 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
     nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
     nest.Connect(inh_poisson, epop, syn_spec={"weight": -1.})
     nest.Connect(inh_poisson, ipop, syn_spec={"weight": -1.})
-    nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                 syn_spec={"weight": nest.random.uniform(min=0., max=2.),
-                           "delay": 1.})
-    nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                 syn_spec={"weight": nest.random.uniform(min=-2., max=0.),
-                           "delay": 1.})
-    nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                 syn_spec={"weight": nest.random.uniform(min=0., max=2.),
-                           "delay": 1.})
-    nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                 syn_spec={"weight": nest.random.uniform(min=-2., max=0.),
-                           "delay": 1.})
+
+    if NEST_VERSION == "nest-3.1":
+        nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": nest.random.uniform(min=0., max=1.),
+                               "delay": 1.})
+        nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": nest.random.uniform(min=-1., max=0.),
+                               "delay": 1.})
+        nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": nest.random.uniform(min=0., max=1.),
+                               "delay": 1.})
+        nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": nest.random.uniform(min=-1., max=0.),
+                               "delay": 1.})
+    else:
+        exc_node_info = nest.GetStatus(epop)
+        exc_local_nodes = [(ni["global_id"], ni["vp"]) for ni in exc_node_info if ni["local"]]
+        inh_node_info = nest.GetStatus(ipop)
+        inh_local_nodes = [(ni["global_id"], ni["vp"]) for ni in inh_node_info if ni["local"]]
+        for
 
     nest.Connect(epop, exc_spike_recorder)
     nest.Connect(ipop, inh_spike_recorder)
