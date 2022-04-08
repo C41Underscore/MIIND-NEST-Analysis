@@ -222,7 +222,6 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
         exc_local_nodes = [(ni["global_id"], ni["vp"]) for ni in exc_node_info if ni["local"]]
         inh_node_info = nest.GetStatus(ipop)
         inh_local_nodes = [(ni["global_id"], ni["vp"]) for ni in inh_node_info if ni["local"]]
-        for
 
     nest.Connect(epop, exc_spike_recorder)
     nest.Connect(ipop, inh_spike_recorder)
