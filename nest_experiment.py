@@ -273,7 +273,10 @@ def nest_experiment():
                 nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
             generate_balancedei_firing_rates()
+            system("cp exc_firing_rates.dat ../{0}_exc_firing_rates.dat; "
+                   "cp inh_firing_rates.dat ../{0}_inh_firing_rates.dat".format(sim_name))
             chdir("..")
+            rmtree(sim_name)
 
     for connections in range(1, POPULATION_SIZE + 1):
         sim_name = "selfconnected_" + str(connections)
@@ -286,7 +289,9 @@ def nest_experiment():
             nest.Simulate(NEST_SIMULATION_TIME)
             nest.ResetKernel()
         generate_selfconnected_firing_rates()
+        system("cp firing_rates.dat ../{0}_firing_rates.dat".format(sim_name))
         chdir("..")
+        rmtree(sim_name)
 
     total_time = round(perf_counter() - start, 2)
     print(str(count) + " experiments performed in " + str(total_time) + " seconds.")

@@ -1,4 +1,4 @@
-import miind.miindsim as miind
+import miind.miindsimv as miind
 from miind.grid_generate import generate
 from os import chdir, mkdir, listdir, getcwd, remove, system
 from os.path import isdir
@@ -71,8 +71,7 @@ def compress_rates(firing_rates):
 
 
 def generate_files(basename, efficacy):
-    miind_filegen_cmds = ["sim %s.xml" % basename,
-                          "generate-lif-mesh %s %f %f %f %f 0.001 750" %
+    miind_filegen_cmds = ["generate-lif-mesh %s %f %f %f %f 0.001 750" %
                           (basename, SIMULATION_TAU, SIMULATION_THRESHOLD, SIMULATION_RESET, SIMULATION_MIN),
                           "generate-model %s %f %f" % (basename, SIMULATION_RESET, SIMULATION_THRESHOLD),
                           "generate-empty-fid %s" % basename,
@@ -199,6 +198,10 @@ def refresh_sim_dir(name):
 def main():
     np.random.seed()
     chdir(MIIND_DATA_LOCATION)
+    files = listdir("./")
+    for file in files:
+        if isdir(file):
+            rmtree(file)
     count = 0
     start = perf_counter()
     for exc_connections in range(1, MAX_CONNECTIONS + 1):
@@ -216,6 +219,11 @@ def main():
                     chdir(sim_dir)
                     generate_balancedei_average_firing_rates()
                     chdir("..")
+            chdir(sim_dir)
+            system("cp exc_firing_rates.dat ../{0}_exc_firing_rates.dat; "
+                   "cp inh_firing_rates.dat ../{0}_inh_firing_rates.dat".format(sim_dir))
+            chdir("..")
+            rmtree(sim_dir)
 
     for connections in range(1, MAX_CONNECTIONS + 1):
         sim_dir = "selfconnected_{0}".format(connections)
@@ -231,6 +239,10 @@ def main():
                 chdir(sim_dir)
                 generate_selfconnected_average_firing_rates()
                 chdir("..")
+        chdir(sim_dir)
+        system("cp firing_rates.dat ../{0}_firing_rates.dat".format(sim_dir))
+        chdir("..")
+        rmtree(sim_dir)
 
     end = perf_counter() - start
     print(str(count) + " MIIND experiments performed in " + str(end) + " seconds.")
