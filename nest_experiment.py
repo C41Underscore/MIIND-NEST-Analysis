@@ -191,8 +191,7 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
     exc_poisson = nest.Create("poisson_generator")
     inh_poisson = nest.Create("poisson_generator")
     if NEST_VERSION == "nest-3.1":
-        exc_poisson.set(rate=80000.)
-        inh_poisson.set(rate=15000.)
+        exc_poisson.set(rate=8000.)
     else:
         nest.SetStatus(exc_poisson, {"rate": 80000.})
         nest.SetStatus(inh_poisson, {"rate": 15000.})
