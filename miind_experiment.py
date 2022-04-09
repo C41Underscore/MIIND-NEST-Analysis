@@ -46,12 +46,15 @@ def generate_balancedei_average_firing_rates():
     exc_average_rates = [0. for _ in range(0, int(SIMULATION_TIME/SIMULATION_TIME_STEP))]
     inh_average_rates = [0. for _ in range(0, int(SIMULATION_TIME/SIMULATION_TIME_STEP))]
     for file in files:
-        with open(file, "r") as data:
-            rates = [float(i) for i in data.readline().split(",")]
-            for i in range(0, len(rates)):
-                if file[0:3] == "exc":
+        if file[0:3] == "exc":
+            with open(file, "r") as data:
+                rates = [float(i) for i in data.readline().split(",")]
+                for i in range(0, len(rates)):
                     exc_average_rates[i] += (1/NUMBER_OF_REPEATS)*rates[i]
-                else:
+        elif file[0:3] == "inh":
+            with open(file, "r") as data:
+                rates = [float(i) for i in data.readline().split(",")]
+                for i in range(0, len(rates)):
                     inh_average_rates[i] += (1/NUMBER_OF_REPEATS)*rates[i]
     system("rm *.dat")
     with open("exc_firing_rates.dat", "w") as file:
