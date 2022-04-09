@@ -23,9 +23,10 @@ if NEST_VERSION == "nest-2.2":
 DATA_LOCATION = "nest_results/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
-NUMBER_OF_REPEATS = 1
-CONNECTION_STEP = 5000
+NUMBER_OF_REPEATS = 5
+CONNECTION_STEP = 500
 
+MAX_CONNECTIONS = 10000
 POPULATION_SIZE = 100000
 
 
@@ -253,8 +254,8 @@ def nest_experiment():
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    for exc_connections in range(CONNECTION_STEP, POPULATION_SIZE + 1, CONNECTION_STEP):
-        for inh_connections in range(CONNECTION_STEP, POPULATION_SIZE + 1, CONNECTION_STEP):
+    for exc_connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
+        for inh_connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
             sim_name = "balancedEI_" + str(exc_connections) + "_" + \
                        str(inh_connections)
             create_and_reset_sim_dir(sim_name)
@@ -262,7 +263,6 @@ def nest_experiment():
             for i in range(1, NUMBER_OF_REPEATS+1):
                 count += 1
                 kernel_settings()
-                print(exc_connections, inh_connections)
                 balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
                 nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
@@ -272,7 +272,7 @@ def nest_experiment():
             chdir("..")
             rmtree(sim_name)
 
-    for connections in range(CONNECTION_STEP, POPULATION_SIZE + 1, CONNECTION_STEP):
+    for connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
         sim_name = "selfconnected_" + str(connections)
         create_and_reset_sim_dir(sim_name)
         chdir(sim_name)
