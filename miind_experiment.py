@@ -1,6 +1,6 @@
 import miind.miindsim as miind
 from miind.grid_generate import generate
-from os import chdir, mkdir, listdir, getcwd, remove, system
+from os import chdir, mkdir, listdir, getcwd, remove, system, rmdir
 from os.path import isdir
 from shutil import rmtree
 from time import perf_counter
@@ -16,25 +16,29 @@ PERFORM_EXPERIMENTS = True
 ANALYSIS_TIME_STEP = 0.01
 
 
-NUMBER_OF_REPEATS = 2
-SIMULATION_TIME = 1.
+NUMBER_OF_REPEATS = 5
+SIMULATION_TIME = 0.5
 SIMULATION_TIME_STEP = 1e-03
 SIMULATION_THRESHOLD = -55.0e-3
 SIMULATION_RESET = -70.0e-3
 SIMULATION_MIN = -75.0e-3
 SIMULATION_TAU = 50e-3
 
-MAX_CONNECTIONS = 2
+
+CONNECTION_STEP = 1000
+
+MAX_CONNECTIONS = 5000
 
 
 def generate_selfconnected_average_firing_rates():
     files = listdir("./")
     average_rates = [0. for _ in range(0, int(SIMULATION_TIME/SIMULATION_TIME_STEP))]
     for file in files:
-        with open(file, "r") as data:
-            rates = [float(i) for i in data.readline().split(",")]
-            for i in range(0, len(rates)):
-                average_rates[i] += (1/NUMBER_OF_REPEATS)*rates[i]
+        if file[0:4] == "test":
+            with open(file, "r") as data:
+                rates = [float(i) for i in data.readline().split(",")]
+                for i in range(0, len(rates)):
+                    average_rates[i] += (1/NUMBER_OF_REPEATS)*rates[i]
     system("rm *.dat")
     with open("firing_rates.dat", "w") as file:
         data = ",".join([str(round(i, 3)) for i in average_rates])
@@ -207,8 +211,8 @@ def main():
             rmtree(file)
     count = 0
     start = perf_counter()
-    for exc_connections in range(1, MAX_CONNECTIONS + 1):
-        for inh_connections in range(1, MAX_CONNECTIONS + 1):
+    for exc_connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
+        for inh_connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
             sim_dir = "balancedEI_{0}_{1}".format(exc_connections, inh_connections)
             create_and_reset_sim_dir(sim_dir)
             for trial_number in range(1, NUMBER_OF_REPEATS + 1):
@@ -221,14 +225,12 @@ def main():
                     refresh_sim_dir(sim_dir)
                     chdir(sim_dir)
                     generate_balancedei_average_firing_rates()
-                    chdir("..")
-            chdir(sim_dir)
-            system("cp exc_firing_rates.dat ../{0}_exc_firing_rates.dat; "
-                   "cp inh_firing_rates.dat ../{0}_inh_firing_rates.dat".format(sim_dir))
+            system("mv exc_firing_rates.dat ../{0}_exc_firing_rates.dat; "
+                   "mv inh_firing_rates.dat ../{0}_inh_firing_rates.dat".format(sim_dir))
             chdir("..")
-            rmtree(sim_dir)
+            system("rm -rf " + sim_dir)
 
-    for connections in range(1, MAX_CONNECTIONS + 1):
+    for connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
         sim_dir = "selfconnected_{0}".format(connections)
         create_and_reset_sim_dir(sim_dir)
         for trial_number in range(1, NUMBER_OF_REPEATS + 1):
@@ -241,11 +243,9 @@ def main():
                 refresh_sim_dir(sim_dir)
                 chdir(sim_dir)
                 generate_selfconnected_average_firing_rates()
-                chdir("..")
-        chdir(sim_dir)
-        system("cp firing_rates.dat ../{0}_firing_rates.dat".format(sim_dir))
+        system("mv firing_rates.dat ../{0}_firing_rates.dat".format(sim_dir))
         chdir("..")
-        rmtree(sim_dir)
+        system("rm -rf " + sim_dir)
 
     end = perf_counter() - start
     print(str(count) + " MIIND experiments performed in " + str(end) + " seconds.")

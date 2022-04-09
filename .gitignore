@@ -6,3 +6,6 @@ benchmarks/rate_0
 rate_0
 *.log
 *.model_mesh
+*.sh
+*.sh*
+__pycache__

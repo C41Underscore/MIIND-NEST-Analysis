@@ -7,8 +7,9 @@ from random import uniform
 
 
 NEST_NEURON_MODEL = "iaf_psc_delta"
-NEST_SIMULATION_TIME = 1000.
-NEST_NUMBER_OF_THREADS = 8
+NEST_SIMULATION_TIME = 500.
+NEST_NUMBER_OF_THREADS = 16
+NEST_NUMBER_OF_VPS = 4
 NEST_VERSION = "nest-3.1"
 pyrngs = []
 try:
@@ -22,9 +23,10 @@ if NEST_VERSION == "nest-2.2":
 DATA_LOCATION = "nest_results/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
-NUMBER_OF_REPEATS = 10
+NUMBER_OF_REPEATS = 1
+CONNECTION_STEP = 5000
 
-POPULATION_SIZE = 10
+POPULATION_SIZE = 100000
 
 
 def create_and_reset_sim_dir(name):
@@ -173,7 +175,7 @@ def self_connected_network(size, connections, experiment_number):
     if NEST_VERSION == "nest-3.1":
         exc_poisson.set(rate=800.)
     else:
-        nest.SetStatus(exc_poisson, {"rate": 8000.})
+        nest.SetStatus(exc_poisson, {"rate": 800.})
 
     nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
 
@@ -251,15 +253,16 @@ def nest_experiment():
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    for exc_connections in range(1, POPULATION_SIZE + 1):
-        for inh_connections in range(1, POPULATION_SIZE + 1):
-            sim_name = "balancedIE_" + str(exc_connections) + "_" + \
+    for exc_connections in range(CONNECTION_STEP, POPULATION_SIZE + 1, CONNECTION_STEP):
+        for inh_connections in range(CONNECTION_STEP, POPULATION_SIZE + 1, CONNECTION_STEP):
+            sim_name = "balancedEI_" + str(exc_connections) + "_" + \
                        str(inh_connections)
             create_and_reset_sim_dir(sim_name)
             chdir(sim_name)
             for i in range(1, NUMBER_OF_REPEATS+1):
                 count += 1
                 kernel_settings()
+                print(exc_connections, inh_connections)
                 balanced_ie_network(POPULATION_SIZE, exc_connections, inh_connections, i)
                 nest.Simulate(NEST_SIMULATION_TIME)
                 nest.ResetKernel()
@@ -269,7 +272,7 @@ def nest_experiment():
             chdir("..")
             rmtree(sim_name)
 
-    for connections in range(1, POPULATION_SIZE + 1):
+    for connections in range(CONNECTION_STEP, POPULATION_SIZE + 1, CONNECTION_STEP):
         sim_name = "selfconnected_" + str(connections)
         create_and_reset_sim_dir(sim_name)
         chdir(sim_name)
@@ -295,7 +298,7 @@ def main():
     chdir("nest_results")
     print("---NEST EXPERIMENT START---")
     nest_experiment()
-    # compile_data()
+    chdir("..")
     print("---NEST EXPERIMENT END---")
 
 
