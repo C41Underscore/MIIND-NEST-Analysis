@@ -1,7 +1,7 @@
 <Simulation>
      <WeightType>CustomConnectionParameters</WeightType>
      <Algorithms>
-          <Algorithm type="MeshAlgorithmGroup" name="LIF" modelfile="${sim_name}noise.model">
+          <Algorithm type="MeshAlgorithmCustom" name="LIF" modelfile="${sim_name}noise.model">
                <TimeStep>${time_step}</TimeStep>
                <MatrixFile>${matrix_fileNoise}</MatrixFile>
                <MatrixFile>${matrix_file}</MatrixFile>

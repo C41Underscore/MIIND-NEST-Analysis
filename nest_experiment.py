@@ -170,16 +170,12 @@ def self_connected_network(size, connections, experiment_number):
     pop = nest.Create(NEST_NEURON_MODEL, size)
 
     exc_poisson = nest.Create("poisson_generator")
-    # inh_poisson = nest.Create("poisson_generator")
     if NEST_VERSION == "nest-3.1":
         exc_poisson.set(rate=800.)
-        # inh_poisson.set(rate=15000.)
     else:
-        nest.SetStatus(exc_poisson, {"rate": 80000.})
-        # nest.SetStatus(inh_poisson, {"rate": 15000.})
+        nest.SetStatus(exc_poisson, {"rate": 8000.})
 
     nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
-    # nest.Connect(inh_poisson, pop, syn_spec={"weight": -1.})
 
     if NEST_VERSION == "nest-3.1":
         nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
@@ -212,22 +208,13 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
     epop = nest.Create(NEST_NEURON_MODEL, size)
     ipop = nest.Create(NEST_NEURON_MODEL, size)
     exc_poisson = nest.Create("poisson_generator")
-    # inh_poisson = nest.Create("poisson_generator")
     if NEST_VERSION == "nest-3.1":
-<<<<<<< HEAD
-        exc_poisson.set(rate=8000.)
-=======
         exc_poisson.set(rate=800.)
-        # inh_poisson.set(rate=15000.)
->>>>>>> d1d21c114f87e7d82dc645a4e1b85cc2e396096f
     else:
-        nest.SetStatus(exc_poisson, {"rate": 8000.})
-        # nest.SetStatus(inh_poisson, {"rate": 15000.})
+        nest.SetStatus(exc_poisson, {"rate": 800.})
 
     nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
     nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
-    # nest.Connect(inh_poisson, epop, syn_spec={"weight": -1.})
-    # nest.Connect(inh_poisson, ipop, syn_spec={"weight": -1.})
 
     if NEST_VERSION == "nest-3.1":
         nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},

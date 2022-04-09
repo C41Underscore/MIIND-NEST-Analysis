@@ -1,4 +1,4 @@
-import miind.miindsimv as miind
+import miind.miindsim as miind
 from miind.grid_generate import generate
 from os import chdir, mkdir, listdir, getcwd, remove, system
 from os.path import isdir
