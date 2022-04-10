@@ -41,7 +41,7 @@ def conductance_lif(start, end, dt, e_r, e_t, tau, tau_e):
 def convert_train(spike_train):
     t = 0.
     spike_times = []
-    for i in range(0, 200):
+    for i in range(0, 100):
         if spike_train[i] == 1:
             spike_times.append(t)
         t += 0.001
@@ -49,7 +49,7 @@ def convert_train(spike_train):
 
 
 def main():
-    vs, ge, ts, spike_train = conductance_lif(0., 0.2, 0.001, -0.070, -0.055, 0.020, 0.005)
+    # vs, ge, ts, spike_train = conductance_lif(0., 0.2, 0.001, -0.070, -0.055, 0.020, 0.005)
 
 #    plt.figure(1)
 #    plt.title("Membrane Potential")
@@ -58,12 +58,19 @@ def main():
  #   plt.figure(2)
  #   plt.title("Conductance Variable")
  #   plt.plot(ts, ge)
-    print(vs)
 
-    spike_times = convert_train(spike_train)
-#    plt.figure(3)
-#    plt.title("Spike Train Input")
-#    plt.eventplot(spike_times, linelengths=0.01)
+    spike_data = []
+    for i in range(0, 8):
+        spikes = convert_train(generate_spike_train(50, 0.001, 100))
+        spike_data.append(spikes)
+    plt.figure()
+    plt.title("Poisson Spike Train Output")
+    plt.xlabel("Time (Seconds)")
+    plt.ylabel("Poisson Spike Train")
+    plt.grid(axis="y")
+    for i in range(0, 8):
+        plt.eventplot(spike_data, linelengths=[0.5 for i in range(0, 8)])
+    plt.show()
 #
 #    spikes = [convert_train(generate_spike_train(150, 0.001, 200)) for _ in range(0, 8)]
 #    plt.figure(4)
