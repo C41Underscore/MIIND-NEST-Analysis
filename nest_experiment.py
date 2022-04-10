@@ -234,17 +234,13 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
                                "delay": 1.})
     else:
         nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.},
-                               "delay": 1.})
+                     syn_spec={"weight": uniform(0., 1.)})
         nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": -1., "high": 0.},
-                               "delay": 1.})
+                     syn_spec={"weight": uniform(-1., 0.)})
         nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.},
-                               "delay": 1.})
+                     syn_spec={"weight": uniform(0., 1.)})
         nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": -1., "high": 0.},
-                               "delay": 1.})
+                     syn_spec={"weight": uniform(-1., 0.)})
 
     nest.Connect(epop, exc_spike_recorder)
     nest.Connect(ipop, inh_spike_recorder)
