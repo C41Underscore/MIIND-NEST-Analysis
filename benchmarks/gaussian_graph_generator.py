@@ -30,4 +30,7 @@ for i in range(0, len(sigmas)):
 nest_ax.legend(loc="upper left")
 nest_ax.set_title("Gaussian Profile (NEST)")
 
+fig.supxlabel("\u00B5")
+fig.supylabel("Firing Rate (Hz)")
+
 plt.show()

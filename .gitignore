@@ -9,3 +9,5 @@ rate_0
 *.sh
 *.sh*
 __pycache__
+nest_results_sub_500
+miind_results_sub_500
