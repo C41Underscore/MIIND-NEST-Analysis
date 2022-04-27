@@ -14,7 +14,7 @@ from subprocess import Popen
 print(argv)
 
 
-MIIND_DATA_LOCATION = "miind_files/"
+MIIND_DATA_LOCATION = "miind_results/"
 BALANCED_IE_TEMPLATE = "balancedIE_template.xml"
 GENERATE_FILES = True
 PERFORM_EXPERIMENTS = True

@@ -1,5 +1,5 @@
 nest_results/
-miind_files/*/
+miind_results/
 *.gdf
 *.dat
 benchmarks/rate_0
@@ -12,3 +12,6 @@ __pycache__
 nest_results_sub_500
 miind_results_sub_500
 *.zip
+
+!nest_results.zip
+!miind_results.zip
