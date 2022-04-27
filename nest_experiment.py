@@ -1,14 +1,16 @@
 import nest
 from os.path import isdir
-from os import mkdir, listdir, chdir, getcwd, system
+from os import mkdir, listdir, chdir, getcwd, system, remove
 from shutil import rmtree
 from time import perf_counter
 from random import uniform
+from sys import argv
+from zipfile import ZipFile
 
 
 NEST_NEURON_MODEL = "iaf_psc_delta"
 NEST_SIMULATION_TIME = 500.
-NEST_NUMBER_OF_THREADS = 16
+NEST_NUMBER_OF_THREADS = 8
 NEST_NUMBER_OF_VPS = 4
 NEST_VERSION = "nest-3.1"
 pyrngs = []
@@ -24,10 +26,10 @@ DATA_LOCATION = "nest_results/"
 SPIKE_DATA_LOCATION = DATA_LOCATION + "spike_recorder/"
 ANALYSIS_TIME_STEP = 0.01
 NUMBER_OF_REPEATS = 5
-CONNECTION_STEP = 10
+CONNECTION_STEP = 1
 
-MAX_CONNECTIONS = 100
-POPULATION_SIZE = 100
+MAX_CONNECTIONS = 500
+POPULATION_SIZE = 100000
 
 
 def create_and_reset_sim_dir(name):
@@ -178,15 +180,15 @@ def self_connected_network(size, connections, experiment_number):
     else:
         nest.SetStatus(exc_poisson, {"rate": 800.})
 
-    nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
+    nest.Connect(exc_poisson, pop, syn_spec={"weight": uniform(0.9, 1.)})
 
     if NEST_VERSION == "nest-3.1":
-        nest.Connect(pop, pop, {"rule": "fixed_total_number", "N": connections},
-                    syn_spec={"weight": uniform(0., 1.),
+        nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
+                    syn_spec={"weight": 1.,
                             "delay": 1.})
     else:
-        nest.Connect(pop, pop, {"rule": "fixed_total_number", "N": connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.}, "delay": 1.})
+        nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
+                     syn_spec={"weight": 1., "delay": 1.})
 
     nest.Connect(pop, spike_recorder)
 
@@ -215,44 +217,46 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
         exc_poisson.set(rate=800.)
     else:
         nest.SetStatus(exc_poisson, {"rate": 800.})
-
-    nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
-    nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
+    
+    h = uniform(0.9, 1.0)
+    nest.Connect(exc_poisson, epop, syn_spec={"weight": h})
+    nest.Connect(exc_poisson, ipop, syn_spec={"weight": h})
 
     if NEST_VERSION == "nest-3.1":
-        nest.Connect(epop, epop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.),
+        nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.,
                                "delay": 1.})
-        nest.Connect(ipop, ipop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.),
+        nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": -1.,
                                "delay": 1.})
-        nest.Connect(epop, ipop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.),
+        nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.,
                                "delay": 1.})
-        nest.Connect(ipop, epop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.),
+        nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": -1.,
                                "delay": 1.})
     else:
-        nest.Connect(epop, epop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.)})
-        nest.Connect(ipop, ipop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.)})
-        nest.Connect(epop, ipop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.)})
-        nest.Connect(ipop, epop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.)})
+        nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.})
+        nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": -1.})
+        nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.})
+        nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": -1.})
 
     nest.Connect(epop, exc_spike_recorder)
     nest.Connect(ipop, inh_spike_recorder)
-    print(exc_connections, inh_connections, nest.num_connections)
 
 
 def nest_experiment():
     count = 0
     start = perf_counter()
     # Iterate over sizes
-    for exc_connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
-        for inh_connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
+    exc_conns = [i for i in range(250, 260, 10)]
+    sizes = [i for i in range(0, 510, 10)]
+    for exc_connections in exc_conns:#range(int(argv[1])-1, int(argv[1])):
+        for inh_connections in sizes:
             sim_name = "balancedEI_" + str(exc_connections) + "_" + \
                        str(inh_connections)
             create_and_reset_sim_dir(sim_name)
@@ -269,30 +273,30 @@ def nest_experiment():
             chdir("..")
             rmtree(sim_name)
 
-    for connections in range(CONNECTION_STEP, MAX_CONNECTIONS + 1, CONNECTION_STEP):
-        sim_name = "selfconnected_" + str(connections)
-        create_and_reset_sim_dir(sim_name)
-        chdir(sim_name)
-        for i in range(0, NUMBER_OF_REPEATS):
-            count += 1
-            kernel_settings()
-            self_connected_network(POPULATION_SIZE, connections, i)
-            nest.Simulate(NEST_SIMULATION_TIME)
-            nest.ResetKernel()
-        generate_selfconnected_firing_rates()
-        system("cp firing_rates.dat ../{0}_firing_rates.dat".format(sim_name))
-        chdir("..")
-        rmtree(sim_name)
+    #for connections in sizes:#range(int(argv[1])-1, int(argv[1])):
+    #    sim_name = "selfconnected_" + str(connections)
+    #    create_and_reset_sim_dir(sim_name)
+    #    chdir(sim_name)
+    #    for i in range(0, NUMBER_OF_REPEATS):
+    #        count += 1
+    #        kernel_settings()
+    #        self_connected_network(POPULATION_SIZE, connections, i)
+    #        nest.Simulate(NEST_SIMULATION_TIME)
+    #        nest.ResetKernel()
+    #    generate_selfconnected_firing_rates()
+    #    system("cp firing_rates.dat ../{0}_firing_rates.dat".format(sim_name))
+    #    chdir("..")
+    #    rmtree(sim_name)
 
     total_time = round(perf_counter() - start, 2)
     print(str(count) + " experiments performed in " + str(total_time) + " seconds.")
 
 
 def main():
-    if isdir("nest_results"):
-        rmtree("nest_results")
-    mkdir("nest_results")
-    chdir("nest_results")
+    #if isdir("nest_results"):
+    #    rmtree("nest_results")
+    #mkdir("nest_results")
+    #chdir("nest_results")
     print("---NEST EXPERIMENT START---")
     nest_experiment()
     chdir("..")
