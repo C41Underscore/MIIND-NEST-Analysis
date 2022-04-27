@@ -1,6 +1,5 @@
 import miind.miindsim as miind
-from miind.grid_generate import generate
-from os import chdir, mkdir, listdir, getcwd, remove, system, rmdir
+from os import chdir, mkdir, listdir, remove, system
 from os.path import isdir
 from shutil import rmtree
 from time import perf_counter
@@ -8,10 +7,6 @@ from string import Template
 import numpy as np
 from statistics import mean
 from sys import argv
-from subprocess import Popen
-
-
-print(argv)
 
 
 MIIND_DATA_LOCATION = "miind_results/"
@@ -32,8 +27,8 @@ SIMULATION_TAU = 50e-3
 sizes = [i for i in range(0, 260, 10)]
 
 EXC_CONNECTIONS = int(argv[1])-1
-CONNECTION_STEP = 500
-MAX_CONNECTIONS = 10000
+CONNECTION_STEP = 10
+MAX_CONNECTIONS = 250
 
 
 def generate_selfconnected_average_firing_rates():
@@ -115,7 +110,7 @@ def generate_and_perform_self_connected(sim_name, connections, trial_number):
     generate_files(sim_name, h)
     generate_files(sim_name + "noise", 1.)
     entire_file = ""
-    with open("../../../selfconnected_template.xml", "r") as file:
+    with open("../selfconnected_template.xml", "r") as file:
         for line in file:
             entire_file += line
     t = Template(entire_file)
@@ -145,7 +140,7 @@ def generate_and_perform_balanced_ie(sim_name, exc_connections, inh_connections,
     h = round(np.random.uniform(0.9, 1.), 3)
     generate_files(sim_name, h)
     entire_file = ""
-    with open("../../../balanced_ie_template.xml", "r") as file:
+    with open("../balanced_ie_template.xml", "r") as file:
         for line in file:
             entire_file += line
     t = Template(entire_file)
@@ -225,7 +220,7 @@ def main():
         system("mv exc_firing_rates.dat ../{0}_exc_firing_rates.dat; "
                "mv inh_firing_rates.dat ../{0}_inh_firing_rates.dat".format(sim_dir))
         chdir("..")
-        system("rm -rf " + sim_dir)
+        system("rm -r " + sim_dir)
 
     sim_dir = "selfconnected_{0}".format(EXC_CONNECTIONS)
     create_and_reset_sim_dir(sim_dir)
