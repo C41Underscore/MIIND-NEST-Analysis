@@ -29,7 +29,7 @@ SIMULATION_RESET = -70.0e-3
 SIMULATION_MIN = -75.0e-3
 SIMULATION_TAU = 50e-3
 
-sizes = [i for i in range(210, 260, 10)]
+sizes = [i for i in range(0, 260, 10)]
 
 EXC_CONNECTIONS = int(argv[1])-1
 CONNECTION_STEP = 500
@@ -144,15 +144,6 @@ def generate_and_perform_self_connected(sim_name, connections, trial_number):
 def generate_and_perform_balanced_ie(sim_name, exc_connections, inh_connections, trial_number):
     h = round(np.random.uniform(0.9, 1.), 3)
     generate_files(sim_name, h)
-    #generate_files(sim_name + "noise", 1.)
-    #generate_files(sim_name + "noiseneg", -1.)
-    #ee_h = round(np.random.uniform(0., 1.), 3)
-    #ii_h = round(np.random.uniform(-1., 0.), 3)
-    #ei_h = round(np.random.uniform(0., 1.), 3)
-    #ie_h = round(np.random.uniform(-1., 0), 3)
-    #efficacies = [("ee", ee_h), ("ii", ii_h), ("ei", ei_h), ("ie", ie_h), ("noise", 1.)]
-    #for efficacy in efficacies:
-       # generate_files(sim_name + efficacy[0], efficacy[1])
     entire_file = ""
     with open("../../../balanced_ie_template.xml", "r") as file:
         for line in file:
@@ -165,9 +156,6 @@ def generate_and_perform_balanced_ie(sim_name, exc_connections, inh_connections,
         "matrix_fileNoise": sim_name + "noise_1_0_0_0_.mat",
         "matrix_fileNoiseNeg": sim_name + "noiseneg_-1_0_0_0_.mat",
         "matrix_fileH": sim_name + "_" + str(h) + "_0_0_0_.mat",
-        #"matrix_fileII": sim_name + "ii_" + str(ii_h) + "_0_0_0_.mat",
-        #"matrix_fileEI": sim_name + "ei_" + str(ei_h) + "_0_0_0_.mat",
-        #"matrix_fileIE": sim_name + "ie_" + str(ie_h) + "_0_0_0_.mat",
         "exc_connections": str(exc_connections),
         "inh_connections": str(inh_connections),
         "h": str(h)
@@ -212,15 +200,12 @@ def refresh_sim_dir(name):
 
 def main():
     np.random.seed()
-    #create_and_reset_sim_dir(MIIND_DATA_LOCATION)
-    #chdir(MIIND_DATA_LOCATION)
     files = listdir("./")
     for file in files:
         if isdir(file):
             rmtree(file)
     count = 0
     start = perf_counter()
-    #for exc_connections in range(EXC_CONNECTIONS, EXC_CONNECTIONS):
     for inh_connections in sizes:
         sim_dir = "balancedEI_{0}_{1}".format(EXC_CONNECTIONS, inh_connections)
         create_and_reset_sim_dir(sim_dir)
@@ -242,21 +227,21 @@ def main():
         chdir("..")
         system("rm -rf " + sim_dir)
 
-    #sim_dir = "selfconnected_{0}".format(EXC_CONNECTIONS)
-    #create_and_reset_sim_dir(sim_dir)
-    #for trial_number in range(1, NUMBER_OF_REPEATS + 1):
-    #    count += 1
-    #    refresh_sim_dir(sim_dir)
-    #    chdir(sim_dir)
-    #    generate_and_perform_self_connected(sim_dir, EXC_CONNECTIONS, trial_number)
-    #    chdir("..")
-    #    if trial_number == NUMBER_OF_REPEATS:
-    #        refresh_sim_dir(sim_dir)
-    #        chdir(sim_dir)
-    #        generate_selfconnected_average_firing_rates()
-    #system("mv firing_rates.dat ../{0}_firing_rates.dat".format(sim_dir))
-    #chdir("..")
-    #system("rm -rf " + sim_dir)
+    sim_dir = "selfconnected_{0}".format(EXC_CONNECTIONS)
+    create_and_reset_sim_dir(sim_dir)
+    for trial_number in range(1, NUMBER_OF_REPEATS + 1):
+        count += 1
+        refresh_sim_dir(sim_dir)
+        chdir(sim_dir)
+        generate_and_perform_self_connected(sim_dir, EXC_CONNECTIONS, trial_number)
+        chdir("..")
+        if trial_number == NUMBER_OF_REPEATS:
+            refresh_sim_dir(sim_dir)
+            chdir(sim_dir)
+            generate_selfconnected_average_firing_rates()
+    system("mv firing_rates.dat ../{0}_firing_rates.dat".format(sim_dir))
+    chdir("..")
+    system("rm -r " + sim_dir)
 
     end = perf_counter() - start
     print(str(count) + " MIIND experiments performed in " + str(end) + " seconds.")

@@ -1,6 +1,6 @@
 import nest
 from os.path import isdir
-from os import mkdir, listdir, chdir, getcwd, system
+from os import mkdir, listdir, chdir, system
 from shutil import rmtree
 from time import perf_counter
 from random import uniform
@@ -26,8 +26,8 @@ ANALYSIS_TIME_STEP = 0.01
 NUMBER_OF_REPEATS = 5
 CONNECTION_STEP = 10
 
-MAX_CONNECTIONS = 100
-POPULATION_SIZE = 100
+MAX_CONNECTIONS = 500
+POPULATION_SIZE = 100000
 
 
 def create_and_reset_sim_dir(name):
@@ -178,15 +178,15 @@ def self_connected_network(size, connections, experiment_number):
     else:
         nest.SetStatus(exc_poisson, {"rate": 800.})
 
-    nest.Connect(exc_poisson, pop, syn_spec={"weight": 1.})
+    nest.Connect(exc_poisson, pop, syn_spec={"weight": uniform(0.9, 1.)})
 
     if NEST_VERSION == "nest-3.1":
-        nest.Connect(pop, pop, {"rule": "fixed_total_number", "N": connections},
+        nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
                     syn_spec={"weight": uniform(0., 1.),
                             "delay": 1.})
     else:
-        nest.Connect(pop, pop, {"rule": "fixed_total_number", "N": connections},
-                     syn_spec={"weight": {"distribution": "uniform", "low": 0., "high": 1.}, "delay": 1.})
+        nest.Connect(pop, pop, {"rule": "fixed_indegree", "indegree": connections},
+                     syn_spec={"weight": 1., "delay": 1.})
 
     nest.Connect(pop, spike_recorder)
 
@@ -216,35 +216,35 @@ def balanced_ie_network(size, exc_connections, inh_connections, experiment_numbe
     else:
         nest.SetStatus(exc_poisson, {"rate": 800.})
 
-    nest.Connect(exc_poisson, epop, syn_spec={"weight": 1.})
-    nest.Connect(exc_poisson, ipop, syn_spec={"weight": 1.})
+    h = uniform(0.9, 1.0)
+    nest.Connect(exc_poisson, epop, syn_spec={"weight": h})
+    nest.Connect(exc_poisson, ipop, syn_spec={"weight": h})
 
     if NEST_VERSION == "nest-3.1":
-        nest.Connect(epop, epop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.),
+        nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.,
                                "delay": 1.})
-        nest.Connect(ipop, ipop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.),
+        nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": 1.,
                                "delay": 1.})
-        nest.Connect(epop, ipop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.),
+        nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.,
                                "delay": 1.})
-        nest.Connect(ipop, epop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.),
+        nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": 1.,
                                "delay": 1.})
     else:
-        nest.Connect(epop, epop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.)})
-        nest.Connect(ipop, ipop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.)})
-        nest.Connect(epop, ipop, {"rule": "fixed_total_number", "N": exc_connections},
-                     syn_spec={"weight": uniform(0., 1.)})
-        nest.Connect(ipop, epop, {"rule": "fixed_total_number", "N": inh_connections},
-                     syn_spec={"weight": uniform(-1., 0.)})
+        nest.Connect(epop, epop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.})
+        nest.Connect(ipop, ipop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": 1.})
+        nest.Connect(epop, ipop, {"rule": "fixed_indegree", "indegree": exc_connections},
+                     syn_spec={"weight": 1.})
+        nest.Connect(ipop, epop, {"rule": "fixed_indegree", "indegree": inh_connections},
+                     syn_spec={"weight": 1.})
 
     nest.Connect(epop, exc_spike_recorder)
     nest.Connect(ipop, inh_spike_recorder)
-    print(exc_connections, inh_connections, nest.num_connections)
 
 
 def nest_experiment():
